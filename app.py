@@ -12,8 +12,9 @@ jwt = JWTManager(app)
 CORS(app)
 
 # MongoDB setup
-client = MongoClient("mongodb://localhost:27017/")
-db = client['temp_db']
+connection_string = "mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/"
+client = MongoClient(connection_string)
+db = client['courtmetrics_db']
 users_collection = db['Users']
 
 @app.route('/')
@@ -46,9 +47,9 @@ def signup():
     if request.method == 'POST':
         username = request.form.get("username")
         password = request.form.get("password")
-        mobile = request.form.get("Mobile")
-        name = request.form.get("Name")
-        address = request.form.get("Address")
+        mobile = request.form.get("mobile")
+        name = request.form.get("name")
+        address = request.form.get("address")
 
         # Validate password length
         if len(password) < 12:
