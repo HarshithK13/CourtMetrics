@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <!-- Navigation Bar with Login and Sign Up Buttons -->
+    <div class="navbar">
+        <div class="nav-links">
+            <a href="{{ url_for('login') }}" class="nav-button">Login</a>
+            <a href="{{ url_for('signup') }}" class="nav-button">Sign Up</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content">
+        <h1>Welcome to the Home Page</h1>
+        <p>This is the main landing page of the app. Use the navigation buttons above to login or sign up.</p>
+    </div>
+</body>
+</html>
