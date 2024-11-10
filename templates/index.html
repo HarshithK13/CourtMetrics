@@ -6,19 +6,132 @@
     <title>Home Page</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
-<body>
-    <!-- Navigation Bar with Login and Sign Up Buttons -->
-    <div class="navbar">
-        <div class="nav-links">
-            <a href="{{ url_for('login') }}" class="nav-button">Login</a>
-            <a href="{{ url_for('signup') }}" class="nav-button">Sign Up</a>
-        </div>
-    </div>
+<!-- <body style="background-image: url("{{ url_for('static', filename='images/background.jpg') }}"); background-size: cover; background-position: center; position: relative;"> -->
+   
+   <!-- White Transparent Layer -->
+   <div class="white-overlay"></div>
 
-    <!-- Main Content -->
-    <div class="content">
-        <h1>Welcome to the Home Page</h1>
-        <p>This is the main landing page of the app. Use the navigation buttons above to login or sign up.</p>
-    </div>
+   <!-- Navigation Bar with Logo and Links -->
+   <div class="navbar">
+        <div class="logo">
+            <!-- Replace this with your actual logo image -->
+            <img src="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" alt="CourtMetrics Logo">
+        </div>
+        <div class="nav-links">
+            <a href="#" class="nav-button">Home</a>
+            <a href="#" class="nav-button">Schedule</a>
+            <a href="#" class="nav-button">Previous Matches</a>
+            <a href="#" class="nav-button">Stats</a>
+            <a href="#" class="nav-button">Available Bids</a>
+            <a href="#" class="nav-button">Payment History</a>
+        </div>
+
+        <!-- Login and Signup Buttons with contrasting hover effect -->
+        <div class="nav-login-signup">
+            <a href="{{ url_for('login') }}" class="nav-button login-btn">Sign in</a>
+            <a href="{{ url_for('signup') }}" class="nav-button signup-btn">Sign up</a>
+        </div>
+   </div>
+
+   <!-- Scores Section Heading -->
+   <h2 class="scores-heading">Scores of Today's Matches</h2>
+
+   <!-- Scoreboard Section (Scrollable) -->
+   <div class="scoreboard-container">
+       <div id="scoreboard" class="scoreboard">
+           {% for game in live_scores %}
+           <!-- Dynamically generate match boxes based on live_scores -->
+           <div class="match-box">
+               <div class="match-details">
+                   <h2 class="team-name">{{ game.home_team }}</h2>
+                   <h2 class="team-name">{{ game.away_team }}</h2>
+               </div>
+               <div class="match-scores">
+                   <p class="team-score">{{ game.home_score }}</p>
+                   <p class="team-score">{{ game.away_score }}</p>
+               </div>
+           </div>
+           {% endfor %}
+       </div> <!-- End of scoreboard -->
+   </div> <!-- End of scoreboard-container -->
+
+   <!-- Left-Aligned Content (Earning History and Summary) -->
+   <div class="left-content">
+       <!-- Earning History Section -->
+       <div class="earning-history">
+           <h2>Earning History of the User</h2>
+           <!-- Placeholder for Chart (you can use an image or embed a chart library) -->
+           <img src="{{ url_for('static', filename='images/earning_history.png') }}" alt="" />
+       </div>
+
+       <!-- Summary of Most Recent Completed Match -->
+       {% if completed_match_summary %}
+       <div class="match-summary">
+           <h2>Summary of Match: {{ completed_match_summary.home_team }} vs {{ completed_match_summary.away_team }}</h2>
+           <p>{{ completed_match_summary.summary }}</p>
+       </div>
+       {% endif %}
+   </div> <!-- End of left-content -->
+
+   <!-- JavaScript to Fetch Live Scores Every 5 Seconds -->
+   <script>
+       function fetchLiveScores() {
+           fetch('/live_scores')
+               .then(response => response.json())
+               .then(data => {
+                   const scoreboardElement = document.getElementById('scoreboard');
+                   scoreboardElement.innerHTML = ''; // Clear previous content
+
+                   data.forEach(game => {
+                       // Create a match box for each game
+                       const matchBox = document.createElement('div');
+                       matchBox.classList.add('match-box');
+
+                       const matchDetails = document.createElement('div');
+                       matchDetails.classList.add('match-details');
+
+                       const homeTeamName = document.createElement('h2');
+                       homeTeamName.classList.add('team-name');
+                       homeTeamName.textContent = game.home_team;
+
+                       const awayTeamName = document.createElement('h2');
+                       awayTeamName.classList.add('team-name');
+                       awayTeamName.textContent = game.away_team;
+
+                       matchDetails.appendChild(homeTeamName);
+                       matchDetails.appendChild(awayTeamName);
+
+                       const matchScores = document.createElement('div');
+                       matchScores.classList.add('match-scores');
+
+                       const homeScore = document.createElement('p');
+                       homeScore.classList.add('team-score');
+                       homeScore.textContent = game.home_score;
+
+                       const awayScore = document.createElement('p');
+                       awayScore.classList.add('team-score');
+                       awayScore.textContent = game.away_score;
+
+                       matchScores.appendChild(homeScore);
+                       matchScores.appendChild(awayScore);
+
+                       // Append details and scores to the match box
+                       matchBox.appendChild(matchDetails);
+                       matchBox.appendChild(matchScores);
+
+                       // Append match box to the scoreboard container
+                       scoreboardElement.appendChild(matchBox);
+                   });
+               })
+               .catch(error => console.error('Error fetching live scores:', error));
+       }
+
+       // Fetch live scores every 5 seconds
+       setInterval(fetchLiveScores, 5000);
+
+       // Initial fetch when page loads
+       window.onload = fetchLiveScores;
+   </script>
+
 </body>
 </html>

@@ -3,6 +3,8 @@ from pymongo import MongoClient
 from flask_jwt_extended import JWTManager, create_access_token
 from flask_cors import CORS
 import bcrypt
+import nba_api
+from nba_api.live.nba.endpoints import scoreboard
 
 
 app = Flask(__name__)
@@ -12,14 +14,72 @@ jwt = JWTManager(app)
 CORS(app)
 
 # MongoDB setup
-connection_string = "mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/"
-client = MongoClient(connection_string)
+client = MongoClient("mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/")
 db = client['courtmetrics_db']
 users_collection = db['Users']
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    
+    games = scoreboard.ScoreBoard()
+    games_dict = games.get_dict()
+
+    
+    live_scores = []
+    completed_match_summary = None
+
+    for game in games_dict['scoreboard']['games']:
+        home_team = game['homeTeam']['teamName']
+        away_team = game['awayTeam']['teamName']
+        home_score = game['homeTeam']['score']
+        away_score = game['awayTeam']['score']
+
+        
+        if game['gameStatusText'] == 'Final':
+            completed_match_summary = {
+                'home_team': home_team,
+                'away_team': away_team,
+                'home_score': home_score,
+                'away_score': away_score,
+                'summary': f"In an intense showdown, {home_team} faced off against {away_team}. The final score was {home_team} {home_score} - {away_team} {away_score}. It was a thrilling match with key plays from both teams."
+            }
+
+        
+        live_scores.append({
+            'home_team': home_team,
+            'away_team': away_team,
+            'home_score': home_score,
+            'away_score': away_score
+        })
+
+    
+    return render_template('index.html', live_scores=live_scores, completed_match_summary=completed_match_summary)
+
+@app.route('/live_scores')
+def live_scores():
+    # Fetch today's scoreboard data using nba_api
+    games = scoreboard.ScoreBoard()
+    games_dict = games.get_dict()
+
+    # Prepare a list of matches with team names and scores
+    live_scores = []
+    for game in games_dict['scoreboard']['games']:
+        home_team = game['homeTeam']['teamName']
+        away_team = game['awayTeam']['teamName']
+        home_score = game['homeTeam']['score']
+        away_score = game['awayTeam']['score']
+        
+        # Append each match's data as a dictionary
+        live_scores.append({
+            'home_team': home_team,
+            'away_team': away_team,
+            'home_score': home_score,
+            'away_score': away_score
+        })
+
+    # Return the live scores as JSON
+    return jsonify(live_scores)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

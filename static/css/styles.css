@@ -7,20 +7,37 @@
 
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f6f9;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    background-image: url('/Users/harshithkethireddy/Downloads/CourtMetrics-develop/static/images/background.jpg'); /* Background image */
+    background-size: cover; /* Cover the entire page */
+    background-position: center; /* Center the background image */
+    background-attachment: fixed; /* Make it fixed when scrolling */
+    position: relative; /* Ensure the body is positioned relative to apply overlay */
+}
+
+/* Semi-transparent overlay */
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7); /* White overlay with 30% transparency */
+    z-index: -1; /* Ensure it stays behind all content */
 }
 
 /* Navigation Bar */
 .navbar {
     width: 100%;
     padding: 10px 20px;
-    background-color: #333;
+    background-color: #ff6600; /* Orange background */
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between; /* Space between logo and links */
     align-items: center;
+}
+
+.logo img {
+    height: 70px; /* Adjust this based on your logo size */
 }
 
 .nav-links {
@@ -29,48 +46,116 @@ body {
 
 .nav-button {
     color: white;
-    background-color: #007bff;
+    background-color: transparent;
     padding: 10px 20px;
     margin-left: 10px;
-    border: none;
-    border-radius: 4px;
     text-decoration: none;
     font-size: 16px;
-    transition: background-color 0.3s ease;
+    border: 1px solid white; /* Add a border for better visibility */
+    transition: all 0.5s ease; /* Smooth transition */
 }
+
 
 .nav-button:hover {
-    background-color: #0056b3;
-}
-
-/* Main Content */
-.content {
-    margin-top: 50px;
-    text-align: center;
-}
-
-h1 {
-    color: #333;
-    font-size: 2em;
-}
-
-p {
-    color: #666;
-    font-size: 1.2em;
+    cursor: pointer;
+    background-color: white; /* Change background on hover */
+    color: black; /* Change text color on hover */
+    box-shadow: 0 0 5px white, 0 0 10px white, 0 0 15px white; /* Shadow effect */
+    font-weight: bold; /* Make text bold on hover */
 }
 
 .cancel-button {
-    margin-top: 10px;
-    padding: 10px 20px;
-    background-color: #ccc;
-    color: #333;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+   margin-top: 10px;
+   padding: 10px 20px;
+   background-color: #ccc;
+   color: #333;
+   border: none;
+   border-radius: 4px;
+   cursor: pointer;
     font-size: 16px;
     transition: background-color 0.3s ease;
+}
+
+/* Login and Signup Buttons */
+.nav-login-signup .login-btn {
+    background-color: #007bff; /* Blue background for login button */
+    color: white;
+}
+
+.nav-login-signup .signup-btn {
+    background-color: #28a745; /* Green background for signup button */
+    color: white;
+}
+
+.nav-login-signup .login-btn:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+.nav-login-signup .signup-btn:hover {
+    background-color: #218838; /* Darker green on hover */
+}
+
+
+/* Scoreboard Section (Scrollable) */
+.scoreboard-container {
+    margin-top: 30px;
+    overflow-x: auto; /* Enable horizontal scrolling if content overflows */
+}
+
+.scoreboard {
+    display: flex; 
+}
+
+/* Match Box Styling */
+.match-box {
+    background-color: #f8e5b2; /* Light yellow background for score blocks */
+    padding: 20px;
+
+    width: 300px; /* Fixed width for each match box */
+    height: 150px; /* Fixed height for consistency */
+
+    display: flex;
+    justify-content: space-between; /* Align team names left and scores right */
+
+    flex-shrink: 0; /* Prevent shrinking of match boxes */
+
+    margin-right: 20px; /* Add space between match boxes */
+}
+
+.match-details {
+   display: flex;
+   flex-direction: column; /* Stack team names vertically on the left side */
+   justify-content: space-between; 
+}
+
+.match-scores {
+   display: flex;
+   flex-direction: column; /* Stack scores vertically on the right side */
+   justify-content: space-between; 
+}
+
+/* Earning History and Summary Section (Aligned Left) */
+.left-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Align content to the left side of the page */
+}
+
+.earning-history,
+.match-summary {
+    margin-top: 50px;
+}
+
+.earning-history h2,
+.match-summary h2 {
+    font-size: 1.8em;
 }
 
 .cancel-button:hover {
     background-color: #aaa;
+}
+
+/* Footer (Optional) */
+.footer {
+    margin-top: auto; /* Push footer to bottom */
 }
