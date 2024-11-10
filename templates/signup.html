@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Signup Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <!-- Signup Component for the Signup Page -->
+    <script type="text/babel">
+        const Signup = () => {
+            const [username, setUsername] = React.useState('');
+            const [password, setPassword] = React.useState('');
+            const [mobile, setMobile] = React.useState('');
+            const [message, setMessage] = React.useState('');
+
+            const handleSignup = async (e) => {
+                e.preventDefault();
+                setMessage('');
+
+                const response = await fetch('/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ username, password })
+                });
+
+                const data = await response.json();
+                setMessage(response.ok ? "Signup successful!" : data.error || "Error signing up");
+            };
+
+            return (
+                <div>
+                    <h2>Signup</h2>
+                    {message && <p>{message}</p>}
+                    <form onSubmit={handleSignup}>
+                        <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required />
+                        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
+                        <input type="mobile" placeholder="Mobile" value={mobile} onChange={e => setMobile(e.target.value)} required />
+                        <button type="submit">Signup</button>
+                    </form>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<Signup />, document.getElementById('root'));
+    </script>
+</body>
+</html>
