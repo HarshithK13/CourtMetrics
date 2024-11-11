@@ -14,8 +14,8 @@ jwt = JWTManager(app)
 CORS(app)
 
 # MongoDB setup
-client = MongoClient("mongodb://localhost:27017/")
-db = client['temp_db']
+client = MongoClient("mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/")
+db = client['courtmetrics_db']
 users_collection = db['Users']
 
 @app.route('/')
@@ -54,57 +54,6 @@ def home():
 
     
     return render_template('index.html', live_scores=live_scores, completed_match_summary=completed_match_summary)
-
-# Define wallet_balance as a global variable
-wallet_balance = 1000  # Initial dummy balance
-
-@app.route('/available_bids', methods=['GET', 'POST'])
-def available_bids():
-    global wallet_balance  # Access the global wallet balance
-
-    if request.method == 'POST':
-        # Handle adding funds to the wallet
-        amount_to_add = int(request.form.get('amount'))
-        wallet_balance += amount_to_add
-
-    # Fetch today's scoreboard data using nba_api
-    games = scoreboard.ScoreBoard()
-    games_dict = games.get_dict()
-
-    ongoing_matches = []
-    
-    if games_dict['scoreboard']['games']:
-        for game in games_dict['scoreboard']['games']:
-            home_team = game['homeTeam']['teamName']
-            away_team = game['awayTeam']['teamName']
-            home_score = game['homeTeam']['score']
-            away_score = game['awayTeam']['score']
-
-            # Add match details to the list of ongoing matches
-            ongoing_matches.append({
-                'home_team': home_team,
-                'away_team': away_team,
-                'home_score': home_score,
-                'away_score': away_score,
-                'betting_amount': max(100 - (home_score + away_score), 0)  # Example: betting amount decreases as scores increase
-            })
-
-    return render_template('available_bids.html', matches=ongoing_matches, wallet_balance=wallet_balance)
-
-@app.route('/place_bid', methods=['POST'])
-def place_bid():
-    match_id = request.form.get('match_id')
-    bet_amount = int(request.form.get('bet_amount'))
-    
-    global wallet_balance
-    
-    if bet_amount <= wallet_balance:
-        wallet_balance -= bet_amount  # Deduct the bet amount from the wallet balance
-        return jsonify({'success': True, 'message': f'Bid placed successfully! Remaining balance: ${wallet_balance}'})
-    
-    return jsonify({'success': False, 'message': 'Insufficient funds!'})
-
-
 
 @app.route('/live_scores')
 def live_scores():
@@ -158,9 +107,9 @@ def signup():
     if request.method == 'POST':
         username = request.form.get("username")
         password = request.form.get("password")
-        mobile = request.form.get("Mobile")
-        name = request.form.get("Name")
-        address = request.form.get("Address")
+        mobile = request.form.get("mobile")
+        name = request.form.get("name")
+        address = request.form.get("address")
 
         # Validate password length
         if len(password) < 12:
