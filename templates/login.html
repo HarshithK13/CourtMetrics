@@ -1,65 +1,80 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <!-- React and Babel for JSX support -->
-    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-</head>
-<body>
-    <div id="root"></div>
+{% extends "base.html" %}
 
-    <!-- Login Component using React -->
-    <script type="text/babel">
-        const Login = () => {
-            const [username, setUsername] = React.useState('');
-            const [password, setPassword] = React.useState('');
-            const [message, setMessage] = React.useState('');
+{% block title %}Login{% endblock %}
 
-            const handleLogin = async (event) => {
-                event.preventDefault();
-                setMessage('');
+{% block content %}
+<div id="root"></div>
 
-                const response = await fetch('/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams({
-                        username,
-                        password
-                    })
-                });
+<script type="text/babel">
+    const Login = () => {
+        const [username, setUsername] = React.useState('');
+        const [password, setPassword] = React.useState('');
+        const [message, setMessage] = React.useState('');
 
-                const data = await response.json();
-                if (response.ok) {
-                    setMessage("Login successful!");
-                    localStorage.setItem('access_token', data.access_token);
-                } else {
-                    setMessage(data.message || "An error occurred");
-                }
-            };
+        const handleLogin = async (event) => {
+            event.preventDefault();
+            setMessage('');
 
-            return (
-                <div className="container">
-                    <h2>Login</h2>
-                    {message && <p>{message}</p>}
-                    <form onSubmit={handleLogin}>
-                        <label>Username:</label>
-                        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
-                        <label>Password:</label>
-                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                        <button type="submit">Login</button>
-                    </form>
-                    <button className="cancel-button" onClick={() => window.location.href = '/'}>Cancel</button>
-                </div>
-            );
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    username,
+                    password
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                setMessage("Login successful!");
+                localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('user_name', data.name);
+                window.location.href = '/';
+            } else {
+                setMessage(data.message || "An error occurred");
+            }
         };
 
-        ReactDOM.render(<Login />, document.getElementById('root'));
-    </script>
-</body>
-</html>
+        return (
+            <div className="login-container">
+                <h2>Login</h2>
+                {message && <p className="message">{message}</p>}
+                <form onSubmit={handleLogin} className="login-form">
+                    <label htmlFor="username">Username:</label>
+                    <input
+                        type="text"
+                        id="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                        className="form-input"
+                    />
+                    <label htmlFor="password">Password:</label>
+                    <input
+                        type="password"
+                        id="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="form-input"
+                    />
+                    <div className="button-group">
+                        <button type="submit" className="submit-button">Login</button>
+                        <button
+                            type="button"
+                            className="cancel-button"
+                            onClick={() => window.location.href = '/'}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        );
+    };
+
+    ReactDOM.render(<Login />, document.getElementById('root'));
+</script>
+{% endblock %}

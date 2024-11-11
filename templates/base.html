@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Court Metrics{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" type="image/x-icon" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- React and Babel for JSX support -->
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+</head>
+<body>
+   <div class="navbar">
+       <div class="logo-container">
+           <img src="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" alt="CourtMetrics Logo" class="logo">
+           <p class="appname">Court Metrics</p>
+       </div>
+       <div class="nav-links">
+           <a href="/" class="nav-button">Home</a>
+           <a href="#" class="nav-button">Schedule</a>
+           <a href="#" class="nav-button">Previous Matches</a>
+           <a href="#" class="nav-button">Stats</a>
+           <a href="available_bids" class="nav-button">Available Bids</a>
+           <a href="#" class="nav-button">Payment History</a>
+       </div>
+
+       <!-- Login, Signup, and User Greeting -->
+       <div class="nav-login-signup">
+           <a href="{{ url_for('login') }}" id="login-btn" class="nav-button login-btn">Sign in</a>
+           <a href="{{ url_for('signup') }}" id="signup-btn" class="nav-button signup-btn">Sign up</a>
+           <div id="user-greeting" style="display: none;" class="user-greeting-container">
+                <p class="appname">Hi, <span id="user-name"></span>!</p>               
+               <button onclick="logout()" class="nav-button logout-btn">Logout</button>
+           </div>
+       </div>
+   </div>
+
+   <div class="content">
+       {% block content %}{% endblock %}
+   </div>
+
+   <script>
+       document.addEventListener("DOMContentLoaded", function() {
+           const userName = localStorage.getItem('user_name');
+           const userGreeting = document.getElementById('user-greeting');
+
+           if (userName) {
+               // Show user greeting and hide login/signup buttons
+               document.getElementById('user-name').textContent = userName;
+               userGreeting.style.display = 'flex';
+               document.getElementById('login-btn').style.display = 'none';
+               document.getElementById('signup-btn').style.display = 'none';
+           }
+       });
+
+       // Logout function
+       function logout() {
+           localStorage.removeItem('access_token');
+           localStorage.removeItem('user_name');
+           window.location.href = '/';
+       }
+   </script>
+</body>
+</html>
