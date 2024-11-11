@@ -17,7 +17,7 @@ placed_bids = []
 # MongoDB setup
 connection_string = "mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/"
 client = MongoClient(connection_string)
-db = client['temp_db']
+db = client['courtmetrics_db']
 users_collection = db['Users']
 
 @app.route('/')
@@ -197,7 +197,7 @@ def login():
         password = request.form.get("password")
 
         # Find the user in the database
-        user = users_collection.find_one({"username": username})
+        user = users_collection.find_one({"username": username, "Role": "user"})
 
         # Verify user and password
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
@@ -210,6 +210,26 @@ def login():
     # Render the signin form for GET request
     return render_template('login.html')
 
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        username = request.form.get("username")
+        password = request.form.get("password")
+        admin = users_collection.find_one({"username": username, "Role": "admin"})
+
+        if admin and bcrypt.checkpw(password.encode('utf-8'), admin['password'].encode('utf-8')):
+            access_token = create_access_token(identity=username)
+            return jsonify({"access_token": access_token, "name": admin["Name"]}), 200
+        else:
+            return jsonify({"message": "Invalid admin credentials"}), 401
+
+    return render_template('admin_login.html')
+
+
+@app.route('/admin_home')
+def admin_home():
+    users = list(users_collection.find({"Role": "user"}))
+    return render_template('admin_home.html', users=users)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -234,7 +254,7 @@ def signup():
 
         # Hash the password and save user data
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        user = {"username": username, "password": hashed_password, "Name": name, "Mobile": mobile, "Address": address}
+        user = {"username": username, "password": hashed_password, "Name": name, "Mobile": mobile, "Address": address, "Role": "user"}
 
         # Insert user into database
         users_collection.insert_one(user)
