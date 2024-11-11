@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Bids</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+
+   <div class="navbar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" alt="CourtMetrics Logo">
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('home') }}" class="nav-button">Home</a>
+            <a href="{{ url_for('available_bids') }}" class="nav-button">Available Bids</a>
+        </div>
+   </div>
+
+   <h2>Available Bids</h2>
+
+   <!-- Wallet Section -->
+   <div class="wallet-section">
+       <h3>Your Wallet Balance: ${{ wallet_balance }}</h3>
+       <form method="POST" action="{{ url_for('available_bids') }}">
+           <input type="number" name="amount" placeholder="Enter amount to add" required>
+           <button type="submit">Add Funds</button>
+       </form>
+   </div>
+
+   <!-- Ongoing Matches Section -->
+   <h3>Ongoing Matches</h3>
+   <div class="matches-container">
+       {% for match in matches %}
+       <div class="match-box">
+           <p><strong>{{ match.home_team }} vs {{ match.away_team }}</strong></p>
+           <p>Score: {{ match.home_score }} - {{ match.away_score }}</p>
+           <p>Betting Amount: ${{ match.betting_amount }}</p>
+
+           <!-- Place Bid Button -->
+           <button onclick="confirmBid('{{ match.home_team }} vs {{ match.away_team }}', '{{ match.betting_amount }}')">Place Bid</button>
+       </div>
+       {% endfor %}
+   </div>
+
+   <!-- Confirmation Popup -->
+   <div id="confirmation-popup" style="display:none;">
+       <p id="confirmation-message"></p>
+       <button id="confirm-yes">Yes</button>
+       <button id="confirm-no">No</button>
+   </div>
+
+   <!-- JavaScript for Confirmation Dialog -->
+   <script>
+       function confirmBid(match_name, bet_amount) {
+           const confirmationMessage = `Do you want to place a bid of $${bet_amount} on ${match_name}?`;
+           document.getElementById('confirmation-message').textContent = confirmationMessage;
+           document.getElementById('confirmation-popup').style.display = 'block';
+
+           document.getElementById('confirm-yes').onclick = function() {
+               // Send POST request to place bid
+               fetch('/place_bid', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                   body: new URLSearchParams({ match_id: match_name, bet_amount: bet_amount })
+               })
+               .then(response => response.json())
+               .then(data => {
+                   alert(data.message);
+                   document.getElementById('confirmation-popup').style.display = 'none';
+                   window.location.reload();  // Reload the page after placing bid
+               });
+           };
+
+           document.getElementById('confirm-no').onclick = function() {
+               document.getElementById('confirmation-popup').style.display = 'none';
+           };
+       }
+   </script>
+
+</body>
+</html>
