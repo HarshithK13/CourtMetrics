@@ -1,37 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Page</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
-<!-- <body style="background-image: url("{{ url_for('static', filename='images/background.jpg') }}"); background-size: cover; background-position: center; position: relative;"> -->
-   
-   <!-- White Transparent Layer -->
-   <div class="white-overlay"></div>
+{% extends "base.html" %}
 
-   <!-- Navigation Bar with Logo and Links -->
-   <div class="navbar">
-        <div class="logo">
-            <!-- Replace this with your actual logo image -->
-            <img src="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" alt="CourtMetrics Logo">
-        </div>
-        <div class="nav-links">
-            <a href="#" class="nav-button">Home</a>
-            <a href="#" class="nav-button">Schedule</a>
-            <a href="#" class="nav-button">Previous Matches</a>
-            <a href="#" class="nav-button">Stats</a>
-            <a href="available_bids" class="nav-button">Available Bids</a>
-            <a href="#" class="nav-button">Payment History</a>
-        </div>
+{% block title %}Home Page{% endblock %}
 
-        <!-- Login and Signup Buttons with contrasting hover effect -->
-        <div class="nav-login-signup">
-            <a href="{{ url_for('login') }}" class="nav-button login-btn">Sign in</a>
-            <a href="{{ url_for('signup') }}" class="nav-button signup-btn">Sign up</a>
-        </div>
-   </div>
+{% block content %}
 
    <!-- Scores Section Heading -->
    <h2 class="scores-heading">Scores of Today's Matches</h2>
@@ -133,5 +104,4 @@
        window.onload = fetchLiveScores;
    </script>
 
-</body>
-</html>
+{% endblock %}

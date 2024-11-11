@@ -1,57 +1,103 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Signup Page</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-</head>
-<body>
-    <div id="root"></div>
-    
-    <!-- Signup Component for the Signup Page -->
-    <script type="text/babel">
-        const Signup = () => {
-            const [username, setUsername] = React.useState('');
-            const [password, setPassword] = React.useState('');
-            const [mobile, setMobile] = React.useState('');
-            const [name, setName] = React.useState('');
-            const [address, setAddress] = React.useState('');
-            const [message, setMessage] = React.useState('');
+{% extends "base.html" %}
 
-            const handleSignup = async (e) => {
-                e.preventDefault();
-                setMessage('');
+{% block title %}Sign Up{% endblock %}
 
-                const response = await fetch('/signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ username, password, mobile, name, address })
-                });
+{% block content %}
+<div id="root"></div>
 
-                const data = await response.json();
-                setMessage(response.ok ? "Signup successful!" : data.error || "Error signing up");
-            };
+<script type="text/babel">
+    const Signup = () => {
+        const [username, setUsername] = React.useState('');
+        const [password, setPassword] = React.useState('');
+        const [mobile, setMobile] = React.useState('');
+        const [name, setName] = React.useState('');
+        const [address, setAddress] = React.useState('');
+        const [message, setMessage] = React.useState('');
 
-            return (
-                <div>
-                    <h2>Signup</h2>
-                    {message && <p>{message}</p>}
-                    <form onSubmit={handleSignup}>
-                        <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required /> <br />
-                        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required /><br />
-                        <input type="mobile" placeholder="Mobile" value={mobile} onChange={e => setMobile(e.target.value)} required /> <br />
-                        <input type="name" placeholder="Name" value={name} onChange={e => setName(e.target.value)} required /> <br />
-                        <input type="address" placeholder="Address" value={address} onChange={e => setAddress(e.target.value)} required /> <br />
-                        <button type="submit">Signup</button>
-                    </form>
-                </div>
-            );
+        const handleSignup = async (e) => {
+            e.preventDefault();
+            setMessage('');
+
+            const response = await fetch('/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    username,
+                    password,
+                    mobile: mobile,
+                    name: name,
+                    address: address
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                alert("Signup successful! You can now log in.");
+                window.location.href = '/';
+            } else {
+                setMessage(data.message || "An error occurred");
+            }
         };
 
-        ReactDOM.render(<Signup />, document.getElementById('root'));
-    </script>
-</body>
-</html>
+        return (
+            <div className="signup-container">
+                <h2>Sign Up</h2>
+                {message && <p className="message">{message}</p>}
+                <form onSubmit={handleSignup} className="signup-form">
+                    <label htmlFor="username">Username:</label>
+                    <input
+                        type="text"
+                        id="username"
+                        value={username}
+                        onChange={e => setUsername(e.target.value)}
+                        required
+                        className="form-input"
+                    />
+                    <label htmlFor="password">Password:</label>
+                    <input
+                        type="password"
+                        id="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        required
+                        className="form-input"
+                    />
+                    <label htmlFor="mobile">Mobile:</label>
+                    <input
+                        type="text"
+                        id="mobile"
+                        value={mobile}
+                        onChange={e => setMobile(e.target.value)}
+                        required
+                        className="form-input"
+                    />
+                    <label htmlFor="name">Name:</label>
+                    <input
+                        type="text"
+                        id="name"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        required
+                        className="form-input"
+                    />
+                    <label htmlFor="address">Address:</label>
+                    <input
+                        type="text"
+                        id="address"
+                        value={address}
+                        onChange={e => setAddress(e.target.value)}
+                        required
+                        className="form-input"
+                    />
+                    <div className="button-group">
+                        <button type="submit" className="submit-button">Sign Up</button>
+                        <button type="button" className="cancel-button" onClick={() => window.location.href = '/'}>Cancel</button>
+                    </div>
+                </form>
+            </div>
+        );
+    };
+
+    ReactDOM.render(<Signup />, document.getElementById('root'));
+</script>
+{% endblock %}

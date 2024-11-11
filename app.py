@@ -14,8 +14,8 @@ jwt = JWTManager(app)
 CORS(app)
 
 # MongoDB setup
-client = MongoClient("mongodb://localhost:27017/")
-db = client['temp_db']
+client = MongoClient("mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/")
+db = client['courtmetrics_db']
 users_collection = db['Users']
 
 @app.route('/')
@@ -145,7 +145,7 @@ def login():
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             # Generate access token
             access_token = create_access_token(identity=username)
-            return jsonify({"access_token": access_token}), 200
+            return jsonify({"access_token": access_token, "name": user["Name"]}), 200
         else:
             return jsonify({"message": "Invalid username or password"}), 401
 
@@ -158,9 +158,9 @@ def signup():
     if request.method == 'POST':
         username = request.form.get("username")
         password = request.form.get("password")
-        mobile = request.form.get("Mobile")
-        name = request.form.get("Name")
-        address = request.form.get("Address")
+        mobile = request.form.get("mobile")
+        name = request.form.get("name")
+        address = request.form.get("address")
 
         # Validate password length
         if len(password) < 12:
