@@ -7,6 +7,7 @@ import nba_api
 import requests
 from datetime import datetime
 from nba_api.live.nba.endpoints import scoreboard
+from bson.objectid import ObjectId  # Import ObjectId to handle MongoDB IDs
 
 
 app = Flask(__name__)
@@ -380,6 +381,17 @@ def get_matches():
 
 
 
+
+@app.route('/delete_user/<user_id>', methods=['DELETE'])
+def delete_user(user_id):
+
+    # Attempt to delete the user by user_id
+    result = users_collection.delete_one({"_id": ObjectId(user_id)})
+    
+    if result.deleted_count == 1:
+        return jsonify({"success": True, "message": "User deleted successfully."})
+    else:
+        return jsonify({"success": False, "message": "User not found."}), 404
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=4235, debug=True)
