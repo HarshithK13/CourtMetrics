@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Upcoming Matches{% endblock %}
+
+{% block content %}
+  <div class="container my-5">
+      <h2 class="text-center mb-4">Upcoming Basketball Matches</h2>
+
+      <!-- Month Search Dropdown -->
+      <div class="text-center mb-4">
+        <label for="month-select" class="form-label">Select Month:</label>
+        <select id="month-select" class="form-select w-auto">
+          <option value='' selected>Select Month</option>
+          <option value="January">January</option>
+          <option value="February">February</option>
+          <option value="March">March</option>
+          <option value="April">April</option>
+          <option value="May">May</option>
+          <option value="June">June</option>
+          <option value="July">July</option>
+          <option value="August">August</option>
+          <option value="September">September</option>
+          <option value="October">October</option>
+          <option value="November">November</option>
+          <option value="December">December</option>
+        </select>
+      </div>
+
+      <!-- Team Search Dropdown -->
+      <div class="text-center mb-4">
+        <label for="team-select" class="form-label">Select Team:</label>
+        <select id="team-select" class="form-select w-auto">
+          <option value='' selected>All Teams</option>
+          <!-- Add your team options here -->
+          <option value="Atlanta Hawks">Atlanta Hawks</option>
+          <option value="Boston Celtics">Boston Celtics</option>
+          <!-- Add more teams as needed -->
+        </select>
+      </div>
+
+      <button id="search-btn" class="btn btn-primary">Search</button>
+
+      <!-- Table for Upcoming Matches -->
+      <table class="user-table table table-bordered table-hover">
+        <thead class="table-dark">
+          <tr>
+            <th>Date</th>
+            <th>Start Time (ET)</th>
+            <th>Home Team</th>
+            <th>Visitor Team</th>
+            <th>Arena</th>
+          </tr>
+        </thead>
+        <tbody id="matches-table-body">
+          <!-- Match rows will be inserted here -->
+        </tbody>
+      </table>
+
+      <div id="error-message" class="text-danger text-center mt-3"></div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Handle search button click
+        document
+          .getElementById("search-btn")
+          .addEventListener("click", function () {
+            const selectedMonth = document.getElementById("month-select").value;
+            const selectedTeam = document.getElementById("team-select").value;
+
+            // If "Select Month" is selected, send an empty value to reset the table
+            if (selectedMonth === '') {
+              fetchMatches('', selectedTeam); // Show all matches if no month is selected
+            } else {
+              fetchMatches(selectedMonth, selectedTeam);
+            }
+          });
+
+        // Default fetch for no filters (initially shows all matches)
+        fetchMatches('', '');
+      });
+
+      function fetchMatches(month, team) {
+        let url = '/get_upcoming_matches';
+        let params = [];
+
+        if (month) {
+          params.push(`month=${month}`);
+        }
+        if (team) {
+          params.push(`team=${team}`);
+        }
+
+        if (params.length > 0) {
+          url += '?' + params.join('&');
+        }
+
+        fetch(url)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok " + response.statusText);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            console.log("Fetched data:", data); // Log fetched data for debugging
+            const tableBody = document.getElementById("matches-table-body");
+
+            // Clear previous table rows
+            tableBody.innerHTML = "";
+
+            if (data.length === 0) {
+              document.getElementById("error-message").textContent = "No upcoming matches found.";
+              return;
+            }
+
+            // Populate table with the fetched data
+            data.forEach((match) => {
+              const row = document.createElement("tr");
+
+              row.innerHTML = ` 
+                           <td>${match["Date"]}</td>
+                           <td>${match["Start (ET)"]}</td>
+                           <td>${match["Home/Neutral"]}</td>
+                           <td>${match["Visitor/Neutral"]}</td>
+                           <td>${match["Arena"]}</td>
+                       `;
+
+              tableBody.appendChild(row);
+            });
+          })
+          .catch((error) => {
+            console.error("Error loading matches:", error);
+            document.getElementById("error-message").textContent =
+              "Failed to load matches. Please try again later.";
+          });
+      }
+    </script>
+
+{% endblock %}

@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify, render_template
 from pymongo import MongoClient
-from flask_jwt_extended import JWTManager, create_access_token
+from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
 from flask_cors import CORS
 import bcrypt
 import nba_api
+import requests
+from datetime import datetime
 from nba_api.live.nba.endpoints import scoreboard
 
 
@@ -18,6 +20,7 @@ placed_bids = []
 connection_string = "mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/"
 client = MongoClient(connection_string)
 db = client['courtmetrics_db']
+matches_collection = db["upcoming_matches"]
 users_collection = db['Users']
 
 @app.route('/')
@@ -60,21 +63,24 @@ def home():
 # Define wallet_balance as a global variable
 wallet_balance = 1000  # Initial dummy balance
 
-@app.route('/available_bids', methods=['GET', 'POST'])
+@app.route('/available_bids', methods=['GET'])
+@jwt_required(optional=True)  # Optional so that users can still view matches if not logged in
 def available_bids():
-    global wallet_balance  # Access the global wallet balance
+    current_user = get_jwt_identity()  # Get current logged-in user (if any)
+    wallet_balance = None
 
-    if request.method == 'POST':
-        # Handle adding funds to the wallet
-        amount_to_add = int(request.form.get('amount'))
-        wallet_balance += amount_to_add
+    if current_user:
+        # Fetch user's wallet balance from MongoDB
+        user_data = users_collection.find_one({"username": current_user})
+        if user_data:
+            wallet_balance = user_data.get("wallet_balance", 1000)  # Default to 1000 if no balance found
 
     # Fetch today's scoreboard data using nba_api
     games = scoreboard.ScoreBoard()
     games_dict = games.get_dict()
 
     ongoing_matches = []
-    
+
     if games_dict['scoreboard']['games']:
         for game in games_dict['scoreboard']['games']:
             home_team = game['homeTeam']['teamName']
@@ -92,7 +98,7 @@ def available_bids():
                 'betting_amount': max(100 - (home_score + away_score), 0)  # Example: betting amount decreases as scores increase
             })
 
-    return render_template('available_bids.html', matches=ongoing_matches, wallet_balance=wallet_balance)
+    return render_template('available_bids.html', matches=ongoing_matches, wallet_balance=wallet_balance, current_user=current_user)
 
 @app.route('/place_bid', methods=['POST'])
 def place_bid():
@@ -189,6 +195,17 @@ def live_scores():
     # Return the live scores as JSON
     return jsonify(live_scores)
 
+@app.route('/get_wallet_balance', methods=['GET'])
+@jwt_required()  # Ensure only logged-in users can access this route
+def get_wallet_balance():
+    current_user = get_jwt_identity()  # Get current user's username from JWT
+    
+    # Fetch user's wallet balance from MongoDB
+    user_data = users_collection.find_one({"username": current_user})
+    if user_data:
+        return jsonify({'wallet_balance': user_data.get("wallet_balance", 1000)})  # Default balance of 1000
+    else:
+        return jsonify({'message': 'User not found'}), 404
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -262,6 +279,107 @@ def signup():
 
     # Render the signup form for GET request
     return render_template('signup.html')
+@app.route('/schedules')
+def schedules():
+    return render_template('schedules.html')
+
+
+@app.route('/get_upcoming_matches', methods=['GET'])
+def get_upcoming_matches():
+
+    month = request.args.get('month', '')
+    team = request.args.get('team', '')
+    
+    if month == '' and team == '':
+        
+        response = requests.get("http://127.0.0.1:4235/get_matches")
+        response.raise_for_status()  # Raise an error for bad status codes
+        matches = response.json()  # Parse JSON response
+        return jsonify(matches) 
+    if month == '' and team != '':
+        try:
+            response = requests.get("http://127.0.0.1:4235/get_matches", params={"team":team})
+            response.raise_for_status()  # Raise an error for bad status codes
+            matches = response.json()  # Parse JSON response
+            return jsonify(matches)  # Send data to frontend
+        except requests.RequestException as e:
+            print(f"Error fetching matches: {e}") 
+            return jsonify([])  # Return an empty list on error
+    else:
+        try:
+            response = requests.get("http://127.0.0.1:4235/get_matches", params={"month": month,"team":team})
+            response.raise_for_status()  # Raise an error for bad status codes
+            matches = response.json()  # Parse JSON response
+            return jsonify(matches)  # Send data to frontend
+        except requests.RequestException as e:
+            print(f"Error fetching matches: {e}") 
+            return jsonify([])  # Return an empty list on error
+
+
+@app.route("/get_matches", methods=["GET"])
+def get_matches():
+    month = request.args.get("month")
+    team = request.args.get("team")
+    print(team)
+    print(month)
+
+    # if month != None:
+    #     print("month is not none")
+    if month != None and team == None:
+        month_abbreviation = month[:3].capitalize()
+        
+        matches = list(
+            matches_collection.find({
+                "Date": {"$regex": f"{month_abbreviation}", "$options": "i"}
+            })
+        )
+
+    elif team!=None and month == None:
+        team = team.capitalize()
+        matches = list(matches_collection.find({"$or": [
+            {"Visitor/Neutral": {"$regex": team, "$options": "i"}},
+            {"Home/Neutral": {"$regex": team, "$options": "i"}}
+        ]}))
+
+    elif month != None and team !=None:
+        month_abbreviation = month[:3].capitalize()
+        team = team.capitalize()
+        matches = list(matches_collection.find({"$and": [
+            {"Date": {"$regex": f"{month_abbreviation}", "$options": "i"}},
+            {"$or": [
+                {"Visitor/Neutral": {"$regex": team, "$options": "i"}},
+                {"Home/Neutral": {"$regex": team, "$options": "i"}}
+            ]}
+        ]}))
+        
+    else:
+        current_month = datetime.now().strftime("%B")
+        # matches = list(matches_collection.find().limit(10))
+        month_abbreviation = current_month[:3].capitalize()
+        
+        matches = list(
+            matches_collection.find({
+                "Date": {"$regex": f"{month_abbreviation}", "$options": "i"}
+            }))
+        current_day = datetime.now().day
+        
+        for match in matches:
+            found_date = int(match['Date'].split(',')[1].strip().split(' ')[1])
+            if found_date < current_day:
+                matches.remove(match)
+        matches = matches[:10]
+
+    if len(matches) == 0:
+        return jsonify({"error": "No matches found,check for the month"})
+
+    for match in matches:
+        match["_id"] = str(match["_id"])
+    print(matches)
+    return jsonify(matches)
+
+
+
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=4235, debug=True)
