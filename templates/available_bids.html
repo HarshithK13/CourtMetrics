@@ -22,7 +22,7 @@
 
    <!-- Wallet Section -->
    <div class="wallet-section">
-       <h3>Your Wallet Balance: ${{ wallet_balance }}</h3>
+       <h3>Your Wallet Balance: $<span id="wallet-balance">{{ wallet_balance }}</span></h3> <!-- Ensure this span has an ID for dynamic updates -->
        <form method="POST" action="{{ url_for('available_bids') }}">
            <input type="number" name="amount" placeholder="Enter amount to add" required>
            <button type="submit">Add Funds</button>
@@ -33,49 +33,94 @@
    <h3>Ongoing Matches</h3>
    <div class="matches-container">
        {% for match in matches %}
-       <div class="match-box">
-           <p><strong>{{ match.home_team }} vs {{ match.away_team }}</strong></p>
-           <p>Score: {{ match.home_score }} - {{ match.away_score }}</p>
-           <p>Betting Amount: ${{ match.betting_amount }}</p>
+       <div class="match-row">
+           <!-- Match Details Section -->
+           <div class="match-box">
+               <p><strong>{{ match.home_team }} vs {{ match.away_team }}</strong></p>
+               <p>Score: {{ match.home_score }} - {{ match.away_score }}</p>
+           </div>
 
-           <!-- Place Bid Button -->
-           <button onclick="confirmBid('{{ match.home_team }} vs {{ match.away_team }}', '{{ match.betting_amount }}')">Place Bid</button>
-       </div>
+           <!-- Betting Options Section -->
+           <div class="betting-box">
+               <form id="bid-form-{{ loop.index }}" method="POST" action="/place_bid">
+                   <!-- Team Selection -->
+                   <label>Select Team:</label><br>
+                   <input type="radio" name="selected_team" value="{{ match.home_team }}" required> {{ match.home_team }}<br>
+                   <input type="radio" name="selected_team" value="{{ match.away_team }}" required> {{ match.away_team }}<br>
+
+                   <!-- Bid Amount Input -->
+                   <label for="bet_amount">Enter Bid Amount (Max ${{ match.betting_amount }}):</label><br>
+                   <input type="number" name="bet_amount" min="1" max="{{ match.betting_amount }}" required><br>
+
+                   <!-- Hidden Fields -->
+                   <input type="hidden" name="match_id" value="{{ match.match_id }}">
+
+                   <!-- Place Bid Button -->
+                   <button type="button" onclick="confirmBid('{{ loop.index }}', '{{ match.home_team }} vs {{ match.away_team }}')">Place Bid</button>
+               </form>
+           </div>
+       </div> <!-- End of match-row -->
        {% endfor %}
    </div>
 
    <!-- Confirmation Popup -->
-   <div id="confirmation-popup" style="display:none;">
+   <div id="confirmation-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black;">
        <p id="confirmation-message"></p>
        <button id="confirm-yes">Yes</button>
        <button id="confirm-no">No</button>
    </div>
 
-   <!-- JavaScript for Confirmation Dialog -->
-   <script>
-       function confirmBid(match_name, bet_amount) {
-           const confirmationMessage = `Do you want to place a bid of $${bet_amount} on ${match_name}?`;
-           document.getElementById('confirmation-message').textContent = confirmationMessage;
-           document.getElementById('confirmation-popup').style.display = 'block';
+   <!-- Success Popup -->
+   <div id="success-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black;">
+       <p id="success-message"></p>
+       <button onclick="closeSuccessPopup()">OK</button>
+   </div>
 
+   <!-- JavaScript for Confirmation Dialog and Success Popup -->
+   <script>
+       function confirmBid(formId, match_name) {
+           const formElement = document.getElementById(`bid-form-${formId}`);
+           const betAmountInput = formElement.querySelector('input[name=bet_amount]').value;
+           const selectedTeamInput = formElement.querySelector('input[name=selected_team]:checked').value;
+
+           const confirmationMessage = `Do you want to place a bid of $${betAmountInput} on ${selectedTeamInput} (${match_name})?`;
+           document.getElementById('confirmation-message').textContent = confirmationMessage;
+           document.getElementById('confirmation-popup').style.display = 'block';  // Show the popup
+
+           // Handle "Yes" button click
            document.getElementById('confirm-yes').onclick = function() {
                // Send POST request to place bid
                fetch('/place_bid', {
                    method: 'POST',
                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                   body: new URLSearchParams({ match_id: match_name, bet_amount: bet_amount })
+                   body: new URLSearchParams(new FormData(formElement))
                })
                .then(response => response.json())
                .then(data => {
-                   alert(data.message);
-                   document.getElementById('confirmation-popup').style.display = 'none';
-                   window.location.reload();  // Reload the page after placing bid
+                   document.getElementById('confirmation-popup').style.display = 'none';  // Hide confirmation popup
+                   if (data.success) {
+                       showSuccessPopup(data.message);
+                       document.getElementById('wallet-balance').textContent = data.wallet_balance;  // Update wallet balance dynamically
+                   } else {
+                       alert(data.message);  // Show error message if something goes wrong
+                   }
                });
            };
 
+           // Handle "No" button click
            document.getElementById('confirm-no').onclick = function() {
-               document.getElementById('confirmation-popup').style.display = 'none';
+               document.getElementById('confirmation-popup').style.display = 'none';  // Hide confirmation popup
            };
+       }
+
+       function showSuccessPopup(message) {
+           document.getElementById('success-message').textContent = message;
+           document.getElementById('success-popup').style.display = 'block';  // Show success popup
+       }
+
+       function closeSuccessPopup() {
+           document.getElementById('success-popup').style.display = 'none';  // Hide success popup
+           window.location.reload();  // Reload page after closing success popup
        }
    </script>
 

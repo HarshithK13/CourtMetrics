@@ -12,10 +12,12 @@ app.config["JWT_SECRET_KEY"] = "83114bdeeb269275f27c98dea61244b1e27d495581b516d6
 jwt = JWTManager(app)
 # Enable CORS for cross-origin requests
 CORS(app)
-
+wallet = 1000
+placed_bids = []
 # MongoDB setup
-client = MongoClient("mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/")
-db = client['courtmetrics_db']
+connection_string = "mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/"
+client = MongoClient(connection_string)
+db = client['temp_db']
 users_collection = db['Users']
 
 @app.route('/')
@@ -82,6 +84,7 @@ def available_bids():
 
             # Add match details to the list of ongoing matches
             ongoing_matches.append({
+                'match_id': f"{home_team}_vs_{away_team}",
                 'home_team': home_team,
                 'away_team': away_team,
                 'home_score': home_score,
@@ -93,16 +96,71 @@ def available_bids():
 
 @app.route('/place_bid', methods=['POST'])
 def place_bid():
-    match_id = request.form.get('match_id')
-    bet_amount = int(request.form.get('bet_amount'))
-    
     global wallet_balance
     
-    if bet_amount <= wallet_balance:
-        wallet_balance -= bet_amount  # Deduct the bet amount from the wallet balance
-        return jsonify({'success': True, 'message': f'Bid placed successfully! Remaining balance: ${wallet_balance}'})
+    match_id = request.form.get('match_id')
+    selected_team = request.form.get('selected_team')  # Either "home" or "away"
+    bet_amount = int(request.form.get('bet_amount'))
     
-    return jsonify({'success': False, 'message': 'Insufficient funds!'})
+    if bet_amount > wallet_balance:
+        return jsonify({'success': False, 'message': 'Insufficient funds!'})
+
+    # Deduct bet amount from wallet immediately
+    wallet_balance -= bet_amount
+
+    # Store this bid in memory (or database) to be resolved later when the match ends
+    placed_bids.append({
+        'match_id': match_id,
+        'selected_team': selected_team,
+        'bet_amount': bet_amount,
+        'status': 'pending'
+    })
+
+    return jsonify({'success': True, 'message': f'Bid placed successfully! Remaining balance: ${wallet_balance}'})
+
+@app.route('/check_results')
+def check_results():
+    global wallet_balance
+
+    # Fetch today's scoreboard data using nba_api to get final scores
+    games = scoreboard.ScoreBoard()
+    games_dict = games.get_dict()
+
+    results_messages = []
+
+    for game in games_dict['scoreboard']['games']:
+        if game['gameStatusText'] == "Final":
+            home_team_name = game['homeTeam']['teamName']
+            away_team_name = game['awayTeam']['teamName']
+            home_score = game['homeTeam']['score']
+            away_score = game['awayTeam']['score']
+
+            # Check if there are any pending bids for this match
+            for bid in placed_bids:
+                if bid['match_id'] == f"{home_team_name}_vs_{away_team_name}" and bid['status'] == "pending":
+                    if bid['selected_team'] == "home":
+                        if home_score > away_score:  # Home team wins
+                            wallet_balance += bid['bet_amount'] * 2  # Double reward
+                            results_messages.append(f"Your team {home_team_name} won! You earned ${bid['bet_amount'] * 2}.")
+                        elif home_score == away_score:  # Draw
+                            wallet_balance += bid['bet_amount']  # Refund original bet amount
+                            results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
+                        else:
+                            results_messages.append(f"Your team {home_team_name} lost.")
+                    elif bid['selected_team'] == "away":
+                        if away_score > home_score:  # Away team wins
+                            wallet_balance += bid['bet_amount'] * 2  # Double reward
+                            results_messages.append(f"Your team {away_team_name} won! You earned ${bid['bet_amount'] * 2}.")
+                        elif away_score == home_score:  # Draw
+                            wallet_balance += bid['bet_amount']  # Refund original bet amount
+                            results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
+                        else:
+                            results_messages.append(f"Your team {away_team_name} lost.")
+
+                    # Mark this bid as resolved
+                    bid['status'] = "resolved"
+
+    return jsonify({'success': True, 'results_messages': results_messages, 'wallet_balance': wallet_balance})
 
 
 
