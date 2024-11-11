@@ -1,47 +1,44 @@
 {% extends "base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Admin Login{% endblock %}
 
 {% block content %}
 <div id="root"></div>
 
 <script type="text/babel">
-    const Login = () => {
+    const AdminLogin = () => {
         const [username, setUsername] = React.useState('');
         const [password, setPassword] = React.useState('');
         const [message, setMessage] = React.useState('');
 
-        const handleLogin = async (event) => {
+        const handleAdminLogin = async (event) => {
             event.preventDefault();
             setMessage('');
 
-            const response = await fetch('/login', {
+            const response = await fetch('/admin_login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: new URLSearchParams({
-                    username,
-                    password
-                })
+                body: new URLSearchParams({ username, password })
             });
 
             const data = await response.json();
             if (response.ok) {
-                setMessage("Login successful!");
+                setMessage("Admin login successful!");
                 localStorage.setItem('access_token', data.access_token);
                 localStorage.setItem('user_name', data.name);
-                window.location.href = '/';
+                window.location.href = '/admin_home';
             } else {
-                setMessage(data.message || "An error occurred");
+                setMessage(data.message || "Invalid admin credentials");
             }
         };
 
         return (
             <div className="login-container">
-                <h2>Login</h2>
+                <h2>Admin Login</h2>
                 {message && <p className="message">{message}</p>}
-                <form onSubmit={handleLogin} className="login-form">
+                <form onSubmit={handleAdminLogin} className="login-form">
                     <label htmlFor="username">Username:</label>
                     <input
                         type="text"
@@ -61,7 +58,7 @@
                         className="form-input"
                     />
                     <div className="button-group">
-                        <button type="submit" className="submit-button">Login</button>
+                        <button type="submit" className="submit-button">Admin Login</button>
                         <button
                             type="button"
                             className="cancel-button"
@@ -71,13 +68,10 @@
                         </button>
                     </div>
                 </form>
-                <p className="admin-link">
-                    <a href="/admin_login">Are you admin?</a>
-                </p>
             </div>
         );
     };
 
-    ReactDOM.render(<Login />, document.getElementById('root'));
+    ReactDOM.render(<AdminLogin />, document.getElementById('root'));
 </script>
 {% endblock %}
