@@ -7,7 +7,7 @@
 
 body {
     font-family: Arial, sans-serif;
-    background-image: url('/Users/harshithkethireddy/Downloads/CourtMetrics-develop/static/images/background.jpg'); /* Background image */
+    background-image: url('/static/images/background.jpg'); 
     background-size: cover; /* Cover the entire page */
     background-position: center; /* Center the background image */
     background-attachment: fixed; /* Make it fixed when scrolling */
@@ -62,18 +62,6 @@ body::before {
     color: black; /* Change text color on hover */
     box-shadow: 0 0 5px white, 0 0 10px white, 0 0 15px white; /* Shadow effect */
     font-weight: bold; /* Make text bold on hover */
-}
-
-.cancel-button {
-   margin-top: 10px;
-   padding: 10px 20px;
-   background-color: #ccc;
-   color: #333;
-   border: none;
-   border-radius: 4px;
-   cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s ease;
 }
 
 /* Login and Signup Buttons */
@@ -151,11 +139,64 @@ body::before {
     font-size: 1.8em;
 }
 
-.cancel-button:hover {
-    background-color: #aaa;
-}
-
 /* Footer (Optional) */
 .footer {
     margin-top: auto; /* Push footer to bottom */
+}
+
+
+
+* Wallet Section */
+.wallet-section {
+    margin: 20px;
+}
+
+.wallet-section input {
+    padding: 10px;
+}
+
+.wallet-section button {
+    padding: 10px;
+}
+
+/* Matches Container */
+.matches-container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.match-box {
+    background-color: #f8e5b2;
+    padding: 20px;
+    margin: 10px;
+    width: 200px;
+}
+
+.match-box button {
+    padding: 10px;
+    width: 45%;
+}
+
+
+/* Confirmation Popup */
+/* Popup Styling */
+#confirmation-popup, #success-popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border: 1px solid black;
+    z-index: 1000; /* Ensure it's on top of other elements */
+}
+.match-row {
+    display: flex;
+    justify-content: space-between;
+}
+
+
+.betting-box {
+    width: 45%;
 }
