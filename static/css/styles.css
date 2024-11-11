@@ -336,38 +336,46 @@ body::before {
     flex-wrap: wrap;
 }
 
+/* Match Row Layout */
+.match-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 50px;
+    width: 100%; /* Ensure the row takes the full width */
+}
+
 .match-box {
     background-color: #f8e5b2;
     padding: 20px;
-    margin: 10px;
-    width: 200px;
+    width: 20%; /* Adjust width to take up most of the row */
 }
 
-.match-box button {
+.betting-box {
+    background-color: #f8e5b2;
+    padding: 20px;
+    width: 75%; /* Adjust width to take up the remaining space */
+}
+
+/* Wallet Section */
+.wallet-section {
+    margin-bottom: 20px;
+}
+
+.wallet-section input {
     padding: 10px;
-    width: 45%;
 }
 
+.wallet-section button {
+    padding: 10px;
+}
 
 /* Confirmation Popup */
-/* Popup Styling */
-#confirmation-popup, #success-popup {
-    display: none;
+#confirmation-popup {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     background-color: white;
-    padding: 20px;
     border: 1px solid black;
-    z-index: 1000; /* Ensure it's on top of other elements */
-}
-.match-row {
-    display: flex;
-    justify-content: space-between;
-}
-
-
-.betting-box {
-    width: 45%;
+    padding: 20px;
 }
