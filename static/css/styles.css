@@ -30,7 +30,7 @@ body::before {
 .navbar {
     width: 100%;
     padding: 10px 20px;
-    background-color: #ff6600; /* Orange background */
+    background: linear-gradient(to right, #ff6600, #000000); /* Shining orange gradient */
     display: flex;
     justify-content: space-between; /* Space between logo and links */
     align-items: center;
