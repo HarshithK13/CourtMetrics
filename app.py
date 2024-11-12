@@ -102,18 +102,23 @@ def available_bids():
     return render_template('available_bids.html', matches=ongoing_matches, wallet_balance=wallet_balance, current_user=current_user)
 
 @app.route('/place_bid', methods=['POST'])
+@jwt_required() 
 def place_bid():
     global wallet_balance
-    
+    current_user = get_jwt_identity()  
     match_id = request.form.get('match_id')
     selected_team = request.form.get('selected_team')  # Either "home" or "away"
     bet_amount = int(request.form.get('bet_amount'))
-    
+    user= users_collection.find_one({"username": current_user})
     if bet_amount > wallet_balance:
         return jsonify({'success': False, 'message': 'Insufficient funds!'})
 
     # Deduct bet amount from wallet immediately
     wallet_balance -= bet_amount
+    users_collection.update_one(
+        {'username': current_user},
+        {'$set': {'wallet_balance': wallet_balance}}
+    )
 
     # Store this bid in memory (or database) to be resolved later when the match ends
     placed_bids.append({
@@ -315,6 +320,20 @@ def get_upcoming_matches():
         except requests.RequestException as e:
             print(f"Error fetching matches: {e}") 
             return jsonify([])  # Return an empty list on error
+@app.route('/add_funds', methods=['POST'])
+@jwt_required()
+def add_funds():
+    current_user = get_jwt_identity()
+    amount_to_add = request.form.get('amount')
+    if not amount_to_add or not amount_to_add.isdigit():
+        return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+    amount_to_add = int(amount_to_add)
+    user_data = users_collection.find_one({"username": current_user})
+    if not user_data:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+    new_balance = user_data.get("wallet_balance", 1000) + int(amount_to_add)
+    users_collection.update_one({"username": current_user}, {"$set": {"wallet_balance": new_balance}})
+    return jsonify({'success': True, 'message': f'Funds added successfully! New balance: ${new_balance}', 'wallet_balance': new_balance}), 200
 
 
 @app.route("/get_matches", methods=["GET"])
