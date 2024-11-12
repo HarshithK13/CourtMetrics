@@ -1,128 +1,165 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Available Bids</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
 
-   <div class="navbar">
-        <div class="logo">
-            <img src="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" alt="CourtMetrics Logo">
-        </div>
-        <div class="nav-links">
-            <a href="{{ url_for('home') }}" class="nav-button">Home</a>
-            <a href="{{ url_for('available_bids') }}" class="nav-button">Available Bids</a>
-        </div>
-   </div>
+{% block title %}Available Bids{% endblock %}
+
+{% block content %}
 
    <h2>Available Bids</h2>
 
-   <!-- Wallet Section -->
-   <div class="wallet-section">
-       <h3>Your Wallet Balance: $<span id="wallet-balance">{{ wallet_balance }}</span></h3> <!-- Ensure this span has an ID for dynamic updates -->
-       <form method="POST" action="{{ url_for('available_bids') }}">
+   <div id="wallet-section" style="display: none;">
+       <h3>Your Wallet Balance: $<span id="wallet-balance"></span></h3>
+       <form id="add-funds-form" onsubmit="addFunds(event)">
            <input type="number" name="amount" placeholder="Enter amount to add" required>
            <button type="submit">Add Funds</button>
        </form>
    </div>
 
-   <!-- Ongoing Matches Section -->
+    <div id="success-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black;">
+        <p id="success-message"></p>
+        <button onclick="closeSuccessPopup()">OK</button>
+    </div>
+
    <h3>Ongoing Matches</h3>
    <div class="matches-container">
        {% for match in matches %}
        <div class="match-row">
-           <!-- Match Details Section -->
            <div class="match-box">
                <p><strong>{{ match.home_team }} vs {{ match.away_team }}</strong></p>
                <p>Score: {{ match.home_score }} - {{ match.away_score }}</p>
            </div>
-
-           <!-- Betting Options Section -->
-           <div class="betting-box">
-               <form id="bid-form-{{ loop.index }}" method="POST" action="/place_bid">
-                   <!-- Team Selection -->
-                   <label>Select Team:</label><br>
-                   <input type="radio" name="selected_team" value="{{ match.home_team }}" required> {{ match.home_team }}<br>
-                   <input type="radio" name="selected_team" value="{{ match.away_team }}" required> {{ match.away_team }}<br>
-
-                   <!-- Bid Amount Input -->
-                   <label for="bet_amount">Enter Bid Amount (Max ${{ match.betting_amount }}):</label><br>
-                   <input type="number" name="bet_amount" min="1" max="{{ match.betting_amount }}" required><br>
-
-                   <!-- Hidden Fields -->
-                   <input type="hidden" name="match_id" value="{{ match.match_id }}">
-
-                   <!-- Place Bid Button -->
-                   <button type="button" onclick="confirmBid('{{ loop.index }}', '{{ match.home_team }} vs {{ match.away_team }}')">Place Bid</button>
-               </form>
+           <div class="betting-box" id="betting-box-{{ loop.index }}">
+               Please log in to place a bid.
            </div>
-       </div> <!-- End of match-row -->
+       </div>
        {% endfor %}
    </div>
 
-   <!-- Confirmation Popup -->
-   <div id="confirmation-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black;">
-       <p id="confirmation-message"></p>
-       <button id="confirm-yes">Yes</button>
-       <button id="confirm-no">No</button>
-   </div>
-
-   <!-- Success Popup -->
-   <div id="success-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black;">
-       <p id="success-message"></p>
-       <button onclick="closeSuccessPopup()">OK</button>
-   </div>
-
-   <!-- JavaScript for Confirmation Dialog and Success Popup -->
    <script>
-       function confirmBid(formId, match_name) {
-           const formElement = document.getElementById(`bid-form-${formId}`);
-           const betAmountInput = formElement.querySelector('input[name=bet_amount]').value;
-           const selectedTeamInput = formElement.querySelector('input[name=selected_team]:checked').value;
+       document.addEventListener("DOMContentLoaded", function() {
+           const accessToken = localStorage.getItem('access_token');
+           const userName = localStorage.getItem('user_name');
+           
+           if (accessToken && userName) {
+               document.getElementById('wallet-section').style.display = 'block';
+               document.getElementById('user-name').textContent = userName;
 
-           const confirmationMessage = `Do you want to place a bid of $${betAmountInput} on ${selectedTeamInput} (${match_name})?`;
-           document.getElementById('confirmation-message').textContent = confirmationMessage;
-           document.getElementById('confirmation-popup').style.display = 'block';  // Show the popup
-
-           // Handle "Yes" button click
-           document.getElementById('confirm-yes').onclick = function() {
-               // Send POST request to place bid
-               fetch('/place_bid', {
-                   method: 'POST',
-                   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                   body: new URLSearchParams(new FormData(formElement))
+               fetch('/get_wallet_balance', {
+                   method: 'GET',
+                   headers: {
+                       'Authorization': `Bearer ${accessToken}`
+                   }
                })
                .then(response => response.json())
                .then(data => {
-                   document.getElementById('confirmation-popup').style.display = 'none';  // Hide confirmation popup
-                   if (data.success) {
-                       showSuccessPopup(data.message);
-                       document.getElementById('wallet-balance').textContent = data.wallet_balance;  // Update wallet balance dynamically
-                   } else {
-                       alert(data.message);  // Show error message if something goes wrong
-                   }
-               });
-           };
+                   if (data.wallet_balance !== undefined) {
+                       document.getElementById('wallet-balance').textContent = data.wallet_balance;
+                       const bettingBoxes = document.querySelectorAll('.betting-box');
 
-           // Handle "No" button click
-           document.getElementById('confirm-no').onclick = function() {
-               document.getElementById('confirmation-popup').style.display = 'none';  // Hide confirmation popup
-           };
+                       bettingBoxes.forEach((box, index) => {
+                           // Set up the HTML form dynamically for each box
+                           box.innerHTML = `
+                               <form class="bid-form">
+                                   Select Team:<br> 
+                                   <input type='radio' name='selected_team' value='home' required> Home<br> 
+                                   <input type='radio' name='selected_team' value='away' required> Away<br> 
+                                   Enter Bid Amount (Max $${data.wallet_balance}):<br> 
+                                   <input type='number' name='bet_amount' min='1' max='${data.wallet_balance}' required><br> 
+                                   <button type='submit'>Place Bid</button>
+                               </form>`;
+
+                           // Add an event listener to handle form submission
+                           const form = box.querySelector('.bid-form');
+                           form.addEventListener('submit', function(event) {
+                               event.preventDefault(); // Prevent default form submission
+                               placeBid(event, data.wallet_balance, form); // Call placeBid with relevant data
+                           });
+                       });
+                   }
+               })
+               .catch(error => {
+                   console.error("Error fetching wallet balance:", error);
+                   document.getElementById('wallet-balance').textContent = 'Error';
+               });
+           }
+       });
+
+       // The placeBid function handles the actual submission
+       function placeBid(event, maxBalance, form) {
+           const accessToken = localStorage.getItem('access_token');
+           const formData = new FormData(form); // Collect form data
+
+           fetch('/place_bid', {
+               method: 'POST',
+               headers: {
+                   'Authorization': `Bearer ${accessToken}`
+               },
+               body: new URLSearchParams(formData) // Send form data as URL-encoded
+           })
+           .then(response => response.json())
+           .then(data => {
+               if (data.message) {
+                   showSuccessPopup(data.message); // Show success message
+               } else {
+                   showErrorPopup('An error occurred while placing the bid.');
+               }
+           })
+           .catch(error => {
+               console.error("Error placing bid:", error);
+               showErrorPopup('An error occurred while placing bid.');
+           });
+       }
+
+       function addFunds(event) {
+           event.preventDefault();
+
+           const accessToken = localStorage.getItem('access_token');
+           const amount = document.querySelector('input[name="amount"]').value;
+
+           fetch('/add_funds', {
+               method: 'POST',
+               headers: {
+                   'Content-Type': 'application/x-www-form-urlencoded',
+                   'Authorization': `Bearer ${accessToken}`
+               },
+               body: `amount=${encodeURIComponent(amount)}`
+           })
+           .then(response => response.json())
+           .then(data => {
+               if (data.message) {
+                   fetch('/get_wallet_balance', {
+                       method: 'GET',
+                       headers: {
+                           'Authorization': `Bearer ${accessToken}`
+                       }
+                   })
+                   .then(response => response.json())
+                   .then(balanceData => {
+                       document.getElementById('wallet-balance').textContent = balanceData.wallet_balance;
+                   });
+                   showSuccessPopup(data.message);
+               } else {
+                   alert('An error occurred while adding funds.');
+               }
+           })
+           .catch(error => {
+               console.error("Error adding funds:", error);
+               alert('An error occurred while adding funds.');
+           });
        }
 
        function showSuccessPopup(message) {
            document.getElementById('success-message').textContent = message;
-           document.getElementById('success-popup').style.display = 'block';  // Show success popup
+           document.getElementById('success-popup').style.display = 'block';
+       }
+
+       function showErrorPopup(message) {
+           document.getElementById('success-message').textContent = message;
+           document.getElementById('success-popup').style.display = 'block';
        }
 
        function closeSuccessPopup() {
-           document.getElementById('success-popup').style.display = 'none';  // Hide success popup
-           window.location.reload();  // Reload page after closing success popup
+           document.getElementById('success-popup').style.display = 'none';
+           window.location.reload();
        }
    </script>
-
-</body>
-</html>
+{% endblock %}
