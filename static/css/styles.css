@@ -136,7 +136,7 @@ body::before {
 /* Match Box Styling */
 .match-box {
     background-color: #f8e5b2; /* Light yellow background for score blocks */
-    padding: 20px;
+    padding: 30px;
 
     width: 300px; /* Fixed width for each match box */
     height: 150px; /* Fixed height for consistency */
@@ -347,7 +347,7 @@ body::before {
 .match-box {
     background-color: #f8e5b2;
     padding: 20px;
-    width: 20%; /* Adjust width to take up most of the row */
+    width: 30%; /* Adjust width to take up most of the row */
 }
 
 .betting-box {

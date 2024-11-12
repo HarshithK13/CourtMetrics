@@ -24,7 +24,7 @@
        {% for match in matches %}
        <div class="match-row">
            <div class="match-box">
-               <p><strong>{{ match.home_team }} vs {{ match.away_team }}</strong></p>
+               <p><strong>Team 1: {{ match.home_team }} vs Team 2: {{ match.away_team }}</strong></p>
                <p>Score: {{ match.home_score }} - {{ match.away_score }}</p>
            </div>
            <div class="betting-box" id="betting-box-{{ loop.index }}">
@@ -60,10 +60,10 @@
                            box.innerHTML = `
                                <form class="bid-form">
                                    Select Team:<br> 
-                                   <input type='radio' name='selected_team' value='home' required> Home<br> 
-                                   <input type='radio' name='selected_team' value='away' required> Away<br> 
-                                   Enter Bid Amount (Max $${data.wallet_balance}):<br> 
-                                   <input type='number' name='bet_amount' min='1' max='${data.wallet_balance}' required><br> 
+                                   <input type='radio' name='selected_team' value='Team 1' required> Team 1<br> 
+                                   <input type='radio' name='selected_team' value='Team 2' required> Team 2<br> 
+                                   Enter Bid Amount (Max $100):<br> 
+                                   <input type='number' name='bet_amount' min='1' max='100' required><br> 
                                    <button type='submit'>Place Bid</button>
                                </form>`;
 
