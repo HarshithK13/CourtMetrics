@@ -23,6 +23,7 @@ client = MongoClient(connection_string)
 db = client['courtmetrics_db']
 matches_collection = db["upcoming_matches"]
 users_collection = db['Users']
+teams_collection = db["Team_stats"]
 
 @app.route('/')
 def home():
@@ -335,6 +336,60 @@ def add_funds():
     users_collection.update_one({"username": current_user}, {"$set": {"wallet_balance": new_balance}})
     return jsonify({'success': True, 'message': f'Funds added successfully! New balance: ${new_balance}', 'wallet_balance': new_balance}), 200
 
+
+@app.route("/get_team_stats", methods=["GET"])
+def get_team_stats():
+    year = request.args.get("year", "").strip()  # Default to empty string if not provided
+    team = request.args.get("team", "").strip()  # Default to empty string if not provided
+
+    # Default values if both parameters are empty
+    if not year and not team:
+        year = "2024"  # Default year
+        team = ""  # Default team (empty means all teams)
+
+    # Build query dynamically based on provided parameters
+    query = {}
+    if year:
+        query["Year"] = {"$regex": f"{year}", "$options": "i"}  # Case-insensitive regex for year
+    if team:
+        query["Team"] = {"$regex": f"{team}", "$options": "i"}  # Case-insensitive regex for team
+
+    # Query the database
+    teams = list(teams_collection.find(query))
+
+    # Fetch distinct years and teams for filters
+    years = teams_collection.distinct("Year")
+    teams_list = teams_collection.distinct("Team")
+
+    # Handle case where no results are found
+    if not teams:
+        return render_template(
+            "stats.html",
+            stats=[],
+            error=f"No stats found for year '{year}' and team '{team}'. Please check your input.",
+            years=sorted(years),
+            teams=sorted(teams_list),
+        )
+
+    # Convert ObjectId to string for JSON serialization
+    for team in teams:
+        team["_id"] = str(team["_id"])
+
+    return render_template(
+        "stats.html",
+        stats=teams,
+        error=None,
+        years=sorted(years),
+        teams=sorted(teams_list),
+    )
+
+@app.route("/get_filters", methods=["GET"])
+def get_filters():
+    # Fetch distinct years and teams from MongoDB
+    years = teams_collection.distinct("Year")
+    teams = teams_collection.distinct("Team")
+
+    return jsonify({"years": sorted(years), "teams": sorted(teams)})
 
 @app.route("/get_matches", methods=["GET"])
 def get_matches():

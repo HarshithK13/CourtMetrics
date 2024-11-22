@@ -6,7 +6,6 @@ import schedule
 import time
 import json
 import re
-import json
 from pymongo import MongoClient
 import os
 
