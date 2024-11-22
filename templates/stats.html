@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Team Statistics{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h2 class="text-center mb-4">Team Statistics</h2>
+
+    <!-- Year Filter -->
+    <div class="text-center mb-4">
+        <label for="year-select" class="form-label">Select Year:</label>
+        <select id="year-select" class="form-select w-auto">
+            <option value="" selected>All Years</option>
+            {% for year in years %}
+            <option value="{{ year }}">{{ year }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Team Filter -->
+    <div class="text-center mb-4">
+        <label for="team-select" class="form-label">Select Team:</label>
+        <select id="team-select" class="form-select w-auto">
+            <option value="" selected>All Teams</option>
+            {% for team in teams %}
+            <option value="{{ team }}">{{ team }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Search Button -->
+    <div class="text-center mb-4">
+        <button id="search-btn" class="btn btn-primary">Search Stats</button>
+    </div>
+
+    <!-- Error Message -->
+    {% if error %}
+        <div id="error-message" class="text-danger text-center mt-3">{{ error }}</div>
+    {% endif %}
+
+    <!-- Table for Team Stats -->
+    {% if stats %}
+        <table class="user-table table table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Year</th>
+                    <th>Team</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <!-- Add more columns as needed -->
+                </tr>
+            </thead>
+            <tbody id="stats-table-body">
+                {% for stat in stats %}
+                <tr>
+                    <td>{{ stat.Year }}</td>
+                    <td>{{ stat.Team }}</td>
+                    <td>{{ stat.Wins or 'N/A' }}</td>
+                    <td>{{ stat.Losses or 'N/A' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        {% if not error %}
+            <p class="text-center">No stats available. Please adjust your filters.</p>
+        {% endif %}
+    {% endif %}
+</div>
+
+<script>
+// Handle search button click
+document.getElementById("search-btn").addEventListener("click", function () {
+    const selectedYear = document.getElementById("year-select").value;
+    const selectedTeam = document.getElementById("team-select").value;
+
+    // Redirect with query parameters
+    let url = "/get_team_stats?";
+    
+    if (selectedYear) {
+        url += `year=${encodeURIComponent(selectedYear)}&`;
+    }
+    
+    if (selectedTeam) {
+        url += `team=${encodeURIComponent(selectedTeam)}`;
+    }
+
+    window.location.href = url;
+});
+</script>
+
+{% endblock %}
