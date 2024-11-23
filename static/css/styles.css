@@ -436,3 +436,46 @@ body::before {
 .user-table td button:hover {
     opacity: 0.8;
 }
+/* Stats Dropdown Menu */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 160px;
+    background: linear-gradient(to right, black, gray);
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1000;
+    border: 1px solid white;
+}
+
+.dropdown-content a {
+    color: white;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.dropdown-content a:hover {
+    background-color: white;
+    color: black;
+    font-weight: bold;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.stats-tab {
+    color: white;
+    padding: 10px 20px;
+    text-decoration: black;
+    cursor: pointer;
+}
+

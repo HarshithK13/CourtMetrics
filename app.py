@@ -24,6 +24,9 @@ db = client['courtmetrics_db']
 matches_collection = db["upcoming_matches"]
 users_collection = db['Users']
 teams_collection = db["Team_stats"]
+perGame_collection = db["Player_stats_perGame"]
+perMinute_collection = db["Player_stats_perMinute"]
+total_collection = db["Player_stats_totals"]
 
 @app.route('/')
 def home():
@@ -339,29 +342,39 @@ def add_funds():
 
 @app.route("/get_team_stats", methods=["GET"])
 def get_team_stats():
-    year = request.args.get("year", "").strip()  # Default to empty string if not provided
-    team = request.args.get("team", "").strip()  # Default to empty string if not provided
+    year = request.args.get("year", "").strip()
+    team = request.args.get("team", "").strip()
 
-    # Default values if both parameters are empty
     if not year and not team:
-        year = "2024"  # Default year
-        team = ""  # Default team (empty means all teams)
+        year = "2024"
+        team = ""
 
-    # Build query dynamically based on provided parameters
     query = {}
     if year:
-        query["Year"] = {"$regex": f"{year}", "$options": "i"}  # Case-insensitive regex for year
+        query["Year"] = {"$regex": f"{year}", "$options": "i"}
     if team:
-        query["Team"] = {"$regex": f"{team}", "$options": "i"}  # Case-insensitive regex for team
+        query["Team"] = {"$regex": f"{team}", "$options": "i"}
 
-    # Query the database
-    teams = list(teams_collection.find(query))
+    pipeline = [
+        {"$match": query},
+        {"$addFields": {
+            "RankInt": {
+                "$cond": {
+                    "if": {"$eq": [{"$type": "$Rank"}, "string"]},
+                    "then": {"$toInt": "$Rank"},
+                    "else": "$Rank"
+                }
+            }
+        }},
+        {"$sort": {"RankInt": 1}},
+        {"$project": {"RankInt": 0}}
+    ]
 
-    # Fetch distinct years and teams for filters
+    teams = list(teams_collection.aggregate(pipeline))
+
     years = teams_collection.distinct("Year")
     teams_list = teams_collection.distinct("Team")
 
-    # Handle case where no results are found
     if not teams:
         return render_template(
             "stats.html",
@@ -371,9 +384,8 @@ def get_team_stats():
             teams=sorted(teams_list),
         )
 
-    # Convert ObjectId to string for JSON serialization
     for team in teams:
-        team["_id"] = str(team["_id"])
+        team.pop('_id', None)
 
     return render_template(
         "stats.html",
@@ -503,8 +515,73 @@ def get_matches():
     # print(matches)
     return jsonify(matches)
 
+@app.route("/get_player_stats", methods=["GET"])
+def get_player_stats():
+    year = request.args.get("year", "").strip()
+    player = request.args.get("player", "").strip()
+    stat_type = request.args.get("stat_type", "perGame").strip()
 
+    collection_map = {
+        "perGame": perGame_collection,
+        "perMinute": perMinute_collection,
+        "total": total_collection
+    }
+    
+    selected_collection = collection_map.get(stat_type, perGame_collection)
 
+    if not year and not player:
+        year = "2024"
+        player = ""
+
+    query = {}
+    if year:
+        query["Year"] = {"$regex": f"{year}", "$options": "i"}
+    if player:
+        query["Player"] = {"$regex": f"{player}", "$options": "i"}
+
+    # Modified pipeline with proper error handling
+    pipeline = [
+        {"$match": query},
+        {"$addFields": {
+            "RkInt": {
+                "$convert": {
+                    "input": "$Rk",
+                    "to": "int",
+                    "onError": 0,  # Handle conversion errors
+                    "onNull": 0    # Handle null values
+                }
+            }
+        }},
+        {"$sort": {"RkInt": 1}},
+        {"$project": {"RkInt": 0}}  # Remove the temporary field
+    ]
+
+    players = list(selected_collection.aggregate(pipeline))
+
+    years = selected_collection.distinct("Year")
+    players_list = selected_collection.distinct("Player")
+
+    if not players:
+        return render_template(
+            "player_stats.html",
+            stats=[],
+            error=f"No stats found for year '{year}' and player '{player}'. Please check your input.",
+            years=sorted(years),
+            players=sorted(players_list),
+            stat_type=stat_type
+        )
+
+    for player in players:
+        player.pop('_id', None)
+
+    return render_template(
+        "player_stats.html",
+        stats=players,
+        error=None,
+        years=sorted(years),
+        players=sorted(players_list),
+        stat_type=stat_type
+    )
 
 
 @app.route('/delete_user/<user_id>', methods=['DELETE'])

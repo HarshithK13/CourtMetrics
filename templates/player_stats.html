@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Player Statistics{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h2 class="text-center mb-4">Player Statistics</h2>
+
+    <!-- Year Filter -->
+    <div class="text-center mb-4">
+        <label for="year-select" class="form-label">Select Year:</label>
+        <select id="year-select" class="form-select w-auto">
+            <option value="" selected>All Years</option>
+            {% for year in years %}
+            <option value="{{ year }}">{{ year }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Player Filter -->
+    <div class="text-center mb-4">
+        <label for="player-select" class="form-label">Select Player:</label>
+        <select id="player-select" class="form-select w-auto">
+            <option value="" selected>All Players</option>
+            {% for player in players %}
+            <option value="{{ player }}">{{ player }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Stat Type Filter -->
+    <div class="text-center mb-4">
+        <label for="stat-type-select" class="form-label">Select Stat Type:</label>
+        <select id="stat-type-select" class="form-select w-auto">
+            <option value="perGame" {% if stat_type == 'perGame' %}selected{% endif %}>Per Game</option>
+            <option value="perMinute" {% if stat_type == 'perMinute' %}selected{% endif %}>Per Minute</option>
+            <option value="total" {% if stat_type == 'total' %}selected{% endif %}>Totals</option>
+        </select>
+    </div>
+
+    <!-- Search Button -->
+    <div class="text-center mb-4">
+        <button id="search-btn" class="btn btn-primary">Search Stats</button>
+    </div>
+
+    <!-- Error Message -->
+    {% if error %}
+        <div id="error-message" class="text-danger text-center mt-3">{{ error }}</div>
+    {% endif %}
+
+    <!-- Table for Player Stats -->
+    {% if stats %}
+        <div class="table-responsive">
+            <table class="user-table table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th colspan="4"></th>
+                        <th colspan="6" style="text-align: center">Shooting</th>
+                        <th colspan="3" style="text-align: center">Three Point</th>
+                        <th colspan="3" style="text-align: center">Free Throws</th>
+                        <th colspan="7" style="text-align: center">Other Stats</th>
+                    </tr>
+                    <tr>
+                        <th>Rk</th>
+                        <th>Player</th>
+                        <th>Pos</th>
+                        <th>Team</th>
+                        <th>FG</th>
+                        <th>FGA</th>
+                        <th>FG%</th>
+                        <th>2P</th>
+                        <th>2PA</th>
+                        <th>2P%</th>
+                        <th>3P</th>
+                        <th>3PA</th>
+                        <th>3P%</th>
+                        <th>FT</th>
+                        <th>FTA</th>
+                        <th>FT%</th>
+                        <th>TRB</th>
+                        <th>AST</th>
+                        <th>STL</th>
+                        <th>BLK</th>
+                        <th>TOV</th>
+                        <th>PF</th>
+                        <th>PTS</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-table-body">
+                    {% for stat in stats %}
+                    <tr>
+                        <td>{{ stat.Rk }}</td>
+                        <td>{{ stat.Player }}</td>
+                        <td>{{ stat.Pos }}</td>
+                        <td>{{ stat.Team }}</td>
+                        <td>{{ stat.FG }}</td>
+                        <td>{{ stat.FGA }}</td>
+                        <td>{{ stat['FG%'] }}</td>
+                        <td>{{ stat['2P'] }}</td>
+                        <td>{{ stat['2PA'] }}</td>
+                        <td>{{ stat['2P%'] }}</td>
+                        <td>{{ stat['3P'] }}</td>
+                        <td>{{ stat['3PA'] }}</td>
+                        <td>{{ stat['3P%'] }}</td>
+                        <td>{{ stat.FT }}</td>
+                        <td>{{ stat.FTA }}</td>
+                        <td>{{ stat['FT%'] }}</td>
+                        <td>{{ stat.TRB }}</td>
+                        <td>{{ stat.AST }}</td>
+                        <td>{{ stat.STL }}</td>
+                        <td>{{ stat.BLK }}</td>
+                        <td>{{ stat.TOV }}</td>
+                        <td>{{ stat.PF }}</td>
+                        <td>{{ stat.PTS }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        {% if not error %}
+            <p class="text-center">No stats available. Please adjust your filters.</p>
+        {% endif %}
+    {% endif %}
+</div>
+
+<script>
+document.getElementById("search-btn").addEventListener("click", function () {
+    const selectedYear = document.getElementById("year-select").value;
+    const selectedPlayer = document.getElementById("player-select").value;
+    const selectedStatType = document.getElementById("stat-type-select").value;
+
+    let url = "/get_player_stats?";
+    
+    if (selectedYear) {
+        url += `year=${encodeURIComponent(selectedYear)}&`;
+    }
+    
+    if (selectedPlayer) {
+        url += `player=${encodeURIComponent(selectedPlayer)}&`;
+    }
+
+    url += `stat_type=${encodeURIComponent(selectedStatType)}`;
+
+    window.location.href = url;
+});
+</script>
+{% endblock %}
