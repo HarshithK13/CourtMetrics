@@ -12,37 +12,37 @@
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 </head>
 <body>
-   <div class="navbar">
-       <div class="logo-container">
-           <img src="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" alt="CourtMetrics Logo" class="logo">
-           <p class="appname">Court Metrics</p>
-       </div>
-       <div class="nav-links">
-           <a href="/" class="nav-button">Home</a>
-           <a href="schedules" class="nav-button">Schedule</a>
-           <a href="#" class="nav-button">Previous Matches</a>
-           <!-- Modified Stats section with dropdown -->
-           <div class="nav-button dropdown">
-               <a href="#" class="stats-tab">Stats</a>
-               <div class="dropdown-content">
-                   <a href="get_team_stats">Team Stats</a>
-                   <a href="get_player_stats">Player Stats</a>
-               </div>
-           </div>
-           <a href="available_bids" class="nav-button">Available Bids</a>
-           <a href="#" class="nav-button">Payment History</a>
-       </div>
-
-       <!-- Login, Signup, and User Greeting -->
-       <div class="nav-login-signup">
-           <a href="{{ url_for('login') }}" id="login-btn" class="nav-button login-btn">Sign in</a>
-           <a href="{{ url_for('signup') }}" id="signup-btn" class="nav-button signup-btn">Sign up</a>
-           <div id="user-greeting" style="display: none;" class="user-greeting-container">
-                <p class="appname">Hi, <span id="user-name"></span>!</p>               
-               <button onclick="logout()" class="nav-button logout-btn">Logout</button>
-           </div>
-       </div>
-   </div>
+    <div class="navbar">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" alt="CourtMetrics Logo" class="logo">
+            <p class="appname">Court Metrics</p>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-button">Home</a>
+            <a href="schedules" class="nav-button">Schedule</a>
+            <a href="past_matches" class="nav-button">Previous Matches</a>
+            <!-- Modified Stats section with dropdown -->
+            <div class="nav-button dropdown">
+                <a href="#" class="stats-tab">Stats</a>
+                <div class="dropdown-content">
+                    <a href="get_team_stats">Team Stats</a>
+                    <a href="get_player_stats">Player Stats</a>
+                </div>
+            </div>
+            <a href="available_bids" class="nav-button">Available Bids</a>
+            <a href="#" class="nav-button">Payment History</a>
+        </div>
+ 
+        <!-- Login, Signup, and User Greeting -->
+        <div class="nav-login-signup">
+            <a href="{{ url_for('login') }}" id="login-btn" class="nav-button login-btn">Sign in</a>
+            <a href="{{ url_for('signup') }}" id="signup-btn" class="nav-button signup-btn">Sign up</a>
+            <div id="user-greeting" style="display: none;" class="user-greeting-container">
+                 <p class="appname">Hi, <span id="user-name"></span>!</p>               
+                <button onclick="logout()" class="nav-button logout-btn">Logout</button>
+            </div>
+        </div>
+    </div>
 
    <div class="content">
        {% block content %}{% endblock %}

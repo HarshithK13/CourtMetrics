@@ -583,6 +583,60 @@ def get_player_stats():
         stat_type=stat_type
     )
 
+@app.route("/past_matches", methods=["GET"])
+def past_matches():
+    month = request.args.get("month", "").strip()
+    team = request.args.get("team", "").strip()
+
+    query = {}
+    if month:
+        query["Date"] = {"$regex": f"{month}", "$options": "i"}
+    if team:
+        query["$or"] = [
+            {"Visitor/Neutral": {"$regex": team, "$options": "i"}},
+            {"Home/Neutral": {"$regex": team, "$options": "i"}}
+        ]
+
+    # Get matches from past_matches collection
+    matches = list(db["past_matches"].find(query))
+
+    # Filter out entries where Date field is empty or just contains "Date"
+    matches = [match for match in matches if match.get("Date") and match.get("Date").strip().lower() != "date"]
+
+    # Sort matches by date
+    for match in matches:
+        match["_id"] = str(match["_id"])
+        try:
+            try:
+                match["DateObj"] = datetime.strptime(match["Date"], "%Y-%m-%d")
+            except ValueError:
+                try:
+                    match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
+                except ValueError:
+                    match["DateObj"] = datetime.now()
+        except Exception as e:
+            print(f"Error parsing date: {e}")
+            match["DateObj"] = datetime.now()
+    
+    sorted_matches = sorted(matches, key=lambda x: x["DateObj"], reverse=True)
+    
+    # Remove temporary DateObj field
+    for match in sorted_matches:
+        del match["DateObj"]
+
+    # Get distinct teams for filter
+    teams_list = list(db["past_matches"].distinct("Visitor/Neutral")) + \
+                 list(db["past_matches"].distinct("Home/Neutral"))
+    teams_list = sorted(list(set(teams_list)))  # Remove duplicates and sort
+
+    return render_template(
+        "past_matches.html",
+        matches=sorted_matches,
+        teams=teams_list,
+        selected_month=month,
+        selected_team=team
+    )
+
 
 @app.route('/delete_user/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
