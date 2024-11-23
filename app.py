@@ -298,7 +298,6 @@ def get_upcoming_matches():
     team = request.args.get('team', '')
     
     if month == '' and team == '':
-        
         response = requests.get("http://127.0.0.1:4235/get_matches")
         response.raise_for_status()  # Raise an error for bad status codes
         matches = response.json()  # Parse JSON response
@@ -321,6 +320,7 @@ def get_upcoming_matches():
         except requests.RequestException as e:
             print(f"Error fetching matches: {e}") 
             return jsonify([])  # Return an empty list on error
+        
 @app.route('/add_funds', methods=['POST'])
 @jwt_required()
 def add_funds():
@@ -409,12 +409,36 @@ def get_matches():
             })
         )
 
+        for item in matches:
+            item['DateObj'] = datetime.strptime(item['Date'], '%a, %b %d, %Y')
+
+        # Sort the JSON data based on the DateObj field
+        sorted_data = sorted(matches, key=lambda x: x['DateObj'])
+
+        # Remove the temporary DateObj field after sorting
+        for item in sorted_data:
+            del item['DateObj']
+
+        matches = sorted_data
+
     elif team!=None and month == None:
         team = team.capitalize()
         matches = list(matches_collection.find({"$or": [
             {"Visitor/Neutral": {"$regex": team, "$options": "i"}},
             {"Home/Neutral": {"$regex": team, "$options": "i"}}
         ]}))
+
+        for item in matches:
+            item['DateObj'] = datetime.strptime(item['Date'], '%a, %b %d, %Y')
+
+        # Sort the JSON data based on the DateObj field
+        sorted_data = sorted(matches, key=lambda x: x['DateObj'])
+
+        # Remove the temporary DateObj field after sorting
+        for item in sorted_data:
+            del item['DateObj']
+
+        matches = sorted_data
 
     elif month != None and team !=None:
         month_abbreviation = month[:3].capitalize()
@@ -426,8 +450,21 @@ def get_matches():
                 {"Home/Neutral": {"$regex": team, "$options": "i"}}
             ]}
         ]}))
+
+        for item in matches:
+            item['DateObj'] = datetime.strptime(item['Date'], '%a, %b %d, %Y')
+
+        # Sort the JSON data based on the DateObj field
+        sorted_data = sorted(matches, key=lambda x: x['DateObj'])
+
+        # Remove the temporary DateObj field after sorting
+        for item in sorted_data:
+            del item['DateObj']
+
+        matches = sorted_data
         
     else:
+        print('------------------------------')
         current_month = datetime.now().strftime("%B")
         # matches = list(matches_collection.find().limit(10))
         month_abbreviation = current_month[:3].capitalize()
@@ -436,20 +473,34 @@ def get_matches():
             matches_collection.find({
                 "Date": {"$regex": f"{month_abbreviation}", "$options": "i"}
             }))
-        current_day = datetime.now().day
         
+        current_day = datetime.now().day
+        trail = []
+        # print(current_day)
         for match in matches:
             found_date = int(match['Date'].split(',')[1].strip().split(' ')[1])
-            if found_date < current_day:
-                matches.remove(match)
-        matches = matches[:10]
+            
+            if found_date >= current_day:
+                trail.append(match)
+
+        for item in trail:
+            item['DateObj'] = datetime.strptime(item['Date'], '%a, %b %d, %Y')
+
+        # Sort the JSON data based on the DateObj field
+        sorted_data = sorted(trail, key=lambda x: x['DateObj'])
+
+        # Remove the temporary DateObj field after sorting
+        for item in sorted_data:
+            del item['DateObj']
+
+        matches = sorted_data[:10]
 
     if len(matches) == 0:
         return jsonify({"error": "No matches found,check for the month"})
 
     for match in matches:
         match["_id"] = str(match["_id"])
-    print(matches)
+    # print(matches)
     return jsonify(matches)
 
 
