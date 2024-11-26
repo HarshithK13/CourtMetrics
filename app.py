@@ -101,7 +101,7 @@ def available_bids():
                 'away_team': away_team,
                 'home_score': home_score,
                 'away_score': away_score,
-                'betting_amount': max(100 - (home_score + away_score), 0)  # Example: betting amount decreases as scores increase
+                'betting_amount': max(150 - (home_score + away_score), 0)  # Example: betting amount decreases as scores increase
             })
 
     return render_template('available_bids.html', matches=ongoing_matches, wallet_balance=wallet_balance, current_user=current_user)
