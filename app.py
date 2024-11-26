@@ -27,6 +27,7 @@ teams_collection = db["Team_stats"]
 perGame_collection = db["Player_stats_perGame"]
 perMinute_collection = db["Player_stats_perMinute"]
 total_collection = db["Player_stats_totals"]
+payment_history_collection = db["payment_history"]
 
 @app.route('/')
 def home():
@@ -113,15 +114,18 @@ def place_bid():
     match_id = request.form.get('match_id')
     selected_team = request.form.get('selected_team')  # Either "home" or "away"
     bet_amount = int(request.form.get('bet_amount'))
-    user= users_collection.find_one({"username": current_user})
+    
+    user_data = users_collection.find_one({"username": current_user})
+    wallet_balance = user_data.get("wallet_balance", 1000)
+    
     if bet_amount > wallet_balance:
         return jsonify({'success': False, 'message': 'Insufficient funds!'})
 
     # Deduct bet amount from wallet immediately
-    wallet_balance -= bet_amount
+    new_balance = wallet_balance - bet_amount
     users_collection.update_one(
         {'username': current_user},
-        {'$set': {'wallet_balance': wallet_balance}}
+        {'$set': {'wallet_balance': new_balance}}
     )
 
     # Store this bid in memory (or database) to be resolved later when the match ends
@@ -132,7 +136,20 @@ def place_bid():
         'status': 'pending'
     })
 
-    return jsonify({'success': True, 'message': f'Bid placed successfully! Remaining balance: ${wallet_balance}'})
+    # Record the transaction in the payment history
+    payment_record = {
+        "username": current_user,
+        "amount": -bet_amount,  # Negative because it's a deduction
+        "date": datetime.now(),
+        "balance_after_transaction": new_balance,
+        "transaction_type": "bid",
+        "match_id": match_id,
+        "selected_team": selected_team
+    }
+    payment_history_collection.insert_one(payment_record)
+
+    return jsonify({'success': True, 'message': f'Bid placed successfully! Remaining balance: ${new_balance}'})
+
 
 @app.route('/check_results')
 def check_results():
@@ -324,19 +341,86 @@ def get_upcoming_matches():
             print(f"Error fetching matches: {e}") 
             return jsonify([])  # Return an empty list on error
         
+
+
+@app.route('/payment_history', methods=['GET'])
+@jwt_required(optional=True)
+def payment_history():
+    return render_template('payment_history.html')
+
+@app.route('/api/payment_history', methods=['GET'])
+@jwt_required(optional=True)
+def api_payment_history():
+    current_user = get_jwt_identity()
+    page = int(request.args.get('page', 1))
+    per_page = 10  
+    # Filtering options
+    transaction_type = request.args.get('transaction_type', '')
+    start_date_str = request.args.get('start_date', '')
+    end_date_str = request.args.get('end_date', '')
+    
+    # Build query
+    query = {"username": current_user}
+    
+    if transaction_type:
+        query['transaction_type'] = transaction_type
+    
+    if start_date_str and end_date_str:
+        query['date'] = {
+            "$gte": datetime.strptime(start_date_str, "%Y-%m-%d"),
+            "$lte": datetime.strptime(end_date_str, "%Y-%m-%d")
+        }
+    
+    total_records = payment_history_collection.count_documents(query)
+    total_pages = (total_records + per_page - 1) // per_page
+    
+    history = list(payment_history_collection.find(query)
+                   .sort("date", -1)
+                   .skip((page-1) * per_page)
+                   .limit(per_page))
+    
+    for record in history:
+        record['_id'] = str(record['_id'])
+        record['date'] = record['date'].isoformat()
+    
+    # Return JSON response
+    return jsonify({
+        'transactions': history,
+        'current_page': page,
+        'total_pages': total_pages
+    })
+ 
+    
+
 @app.route('/add_funds', methods=['POST'])
 @jwt_required()
 def add_funds():
     current_user = get_jwt_identity()
     amount_to_add = request.form.get('amount')
+    
     if not amount_to_add or not amount_to_add.isdigit():
         return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+    
     amount_to_add = int(amount_to_add)
     user_data = users_collection.find_one({"username": current_user})
+    
     if not user_data:
         return jsonify({'success': False, 'message': 'User not found'}), 404
-    new_balance = user_data.get("wallet_balance", 1000) + int(amount_to_add)
+    
+    # Update the user's wallet balance
+    new_balance = user_data.get("wallet_balance", 1000) + amount_to_add
     users_collection.update_one({"username": current_user}, {"$set": {"wallet_balance": new_balance}})
+    
+    # Record the transaction in the payment history
+    payment_record = {
+        "username": current_user,
+        "amount": amount_to_add,
+        "date": datetime.now(),
+        "balance_after_transaction": new_balance,
+        "transaction_type": "add_funds"
+    }
+    payment_history_collection.insert_one(payment_record)
+    
     return jsonify({'success': True, 'message': f'Funds added successfully! New balance: ${new_balance}', 'wallet_balance': new_balance}), 200
 
 
