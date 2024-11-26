@@ -7,7 +7,7 @@
 
 body {
     font-family: Arial, sans-serif;
-    background-image: url('../images/background.jpg'); /* Background image */
+    background-image: url('../images/background2.png'); /* Background image */
     background-size: cover; /* Cover the entire page */
     background-position: center; /* Center the background image */
     background-attachment: fixed; /* Make it fixed when scrolling */

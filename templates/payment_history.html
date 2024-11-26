@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Payment History{% endblock %}
+
+{% block content %}
+<div style="height: 20px;"></div>
+<div class="payment-history-container">
+    <h1>Payment History</h1>
+    <div style="height: 20px;"></div>
+    <div class="filters">
+        <div class="filter-group">
+            <select id="transaction-type-filter">
+                <option value="">All Transactions</option>
+                <option value="add_funds">Add Funds</option>
+                <option value="bid">Bets</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="start-date">From:</label>
+            <input type="date" id="start-date" placeholder="Start Date">
+        </div>
+
+        <div class="filter-group">
+            <label for="end-date">To:</label>
+            <input type="date" id="end-date" placeholder="End Date">
+        </div>
+
+        <div class="filter-group">
+            <button onclick="applyFilters()">Apply Filters</button>
+        </div>
+    </div>
+    
+    <table id="payment-history-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Transaction Type</th>
+                <th>Amount</th>
+                <th>Balance After Transaction</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody id="payment-history-body">
+        </tbody>
+    </table>
+    <div id="pagination">
+        <button id="prev-page" onclick="changePage(-1)">Previous</button>
+        <span id="page-info">Page 1 of 1</span>
+        <button id="next-page" onclick="changePage(1)">Next</button>
+    </div>
+</div>
+
+<style>
+/* Container Styling */
+.payment-history-container {
+    width: 90%;
+    margin: auto;
+    font-family: Arial, sans-serif;
+}
+
+/* Table Styling */
+table#payment-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #f9f9f9;
+    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+table#payment-history-table th, table#payment-history-table td {
+    text-align: left;
+    padding: 12px;
+    border: 1px solid #ddd;
+}
+
+table#payment-history-table th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+}
+
+table#payment-history-table td {
+    vertical-align: middle;
+}
+
+/* Align Numeric Columns */
+table#payment-history-table td:nth-child(3),
+table#payment-history-table td:nth-child(4) {
+    text-align: right;
+}
+
+.payment-history-container .filters {
+    display: flex;
+    align-items: center;
+    gap: 20px; /* Increased gap between all elements */
+    flex-wrap: wrap;
+}
+
+.filters .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Small gap between label and input/select */
+}
+
+.filters label, .filters input, .filters select, .filters button {
+    margin: 0;
+}
+
+.filters input[type="date"] {
+    width: 150px;
+    padding: 5px;
+    font-size: 14px;
+}
+
+#pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+#pagination button {
+    padding: 8px 12px;
+    margin: 0 5px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+#pagination button:disabled {
+    background-color: #eaeaea;
+    cursor: not-allowed;
+}
+
+#pagination #page-info {
+    font-weight: bold;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    fetchPaymentHistory();
+});
+
+let currentPage = 1;
+let totalPages = 1;
+
+function fetchPaymentHistory(page = 1) {
+    const token = localStorage.getItem('access_token');
+    const transactionType = document.getElementById('transaction-type-filter').value;
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+
+    fetch(`/api/payment_history?page=${page}&transaction_type=${transactionType}&start_date=${startDate}&end_date=${endDate}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const tableBody = document.getElementById('payment-history-body');
+        tableBody.innerHTML = ''; // Clear existing rows
+
+        data.transactions.forEach(record => {
+            const row = tableBody.insertRow();
+            row.insertCell(0).textContent = new Date(record.date).toLocaleString();
+            row.insertCell(1).textContent = record.transaction_type;
+
+            const amountCell = row.insertCell(2);
+            amountCell.textContent = `$${record.amount}`;
+            amountCell.style.color = record.amount >= 0 ? 'green' : 'red';
+
+            row.insertCell(3).textContent = `$${record.balance_after_transaction}`;
+
+            const detailsCell = row.insertCell(4);
+            if (record.transaction_type === 'bid') {
+                detailsCell.textContent = `Bet on ${record.selected_team}`;
+            } else {
+                detailsCell.textContent = 'N/A';
+            }
+        });
+
+        currentPage = data.current_page;
+        totalPages = data.total_pages;
+        updatePaginationControls();
+    })
+    .catch(error => {
+        console.error('Error fetching payment history:', error);
+        alert('Failed to load payment history');
+    });
+}
+
+function applyFilters() {
+    fetchPaymentHistory(1);
+}
+
+function changePage(direction) {
+    const newPage = currentPage + direction;
+    if (newPage > 0 && newPage <= totalPages) {
+        fetchPaymentHistory(newPage);
+    }
+}
+
+function updatePaginationControls() {
+    document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+    document.getElementById('prev-page').disabled = currentPage === 1;
+    document.getElementById('next-page').disabled = currentPage === totalPages;
+}
+</script>
+{% endblock %}
