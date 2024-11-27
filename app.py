@@ -348,6 +348,11 @@ def get_upcoming_matches():
 def payment_history():
     return render_template('payment_history.html')
 
+@app.route('/bidding_history', methods=['GET'])
+@jwt_required(optional=True)
+def bidding_history():
+    return render_template('bidding_history.html')
+
 @app.route('/api/payment_history', methods=['GET'])
 @jwt_required(optional=True)
 def api_payment_history():
