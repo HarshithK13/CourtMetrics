@@ -298,7 +298,7 @@ def signup():
 
         # Hash the password and save user data
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        user = {"username": username, "password": hashed_password, "Name": name, "Mobile": mobile, "Address": address, "Role": "user"}
+        user = {"username": username, "password": hashed_password, "Name": name, "Mobile": mobile, "Address": address, "Role": "user", "wallet_balance":200}
 
         # Insert user into database
         users_collection.insert_one(user)

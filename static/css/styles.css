@@ -82,7 +82,6 @@ body::before {
     position: absolute;
     width: 15px;
     height: 15px;
-    border: 2px solid white;  /* Increased border thickness */
     transition: all 0.3s ease;
 }
 
@@ -104,14 +103,12 @@ body::before {
 .nav-button:hover::after {
     width: 100%;
     height: 100%;
-    border-color: black;
-    border-width: 2px;  /* Maintain thickness on hover */
 }
 
 .nav-button:hover {
     cursor: pointer;
-    background-color: white;
-    color: black;
+    background-color: #F7920B;
+    color: white;
     box-shadow: 0 0 5px white, 0 0 10px white, 0 0 15px white;
     font-weight: bold;
 }
@@ -495,10 +492,12 @@ body::before {
 }
 
 .dropdown-content a:hover {
-    background-color: white;
+    background-color: #f4f4f4;
     color: black;
     font-weight: bold;
+    border-left: 3px solid #ff6600;
 }
+
 
 .dropdown:hover .dropdown-content {
     display: block;
@@ -507,7 +506,31 @@ body::before {
 .stats-tab {
     color: white;
     padding: 10px 20px;
-    text-decoration: black;
+    background-color: transparent;
+    text-decoration: none;
+    font-size: 16px;
     cursor: pointer;
+    transition: all 0.3s ease;
 }
 
+/* Styling for the logo and app name */
+.home-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none; /* Remove underline */
+    color: inherit; /* Inherit text color */
+    gap: 10px; /* Add space between the logo and app name */
+}
+
+/* Prevent hover underline */
+.home-link:hover {
+    text-decoration: none;
+}
+
+/* Adjust styling for app name inside the home link */
+.home-link .appname {
+    font-size: 1.5em; /* Adjust font size */
+    font-weight: bold;
+    font-family: 'Tahoma', sans-serif;
+    color: white; /* Ensure the color matches the design */
+}
