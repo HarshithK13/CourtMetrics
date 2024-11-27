@@ -14,8 +14,10 @@
 <body>
     <div class="navbar">
         <div class="logo-container">
-            <img src="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" alt="CourtMetrics Logo" class="logo">
-            <p class="appname">Court Metrics</p>
+            <a href="/" class="home-link">
+                <img src="{{ url_for('static', filename='images/metrics_logo.jpeg') }}" alt="CourtMetrics Logo" class="logo">
+                <p class="appname">Court Metrics</p>
+            </a>
         </div>
         <div class="nav-links">
             <a href="/" class="nav-button">Home</a>
