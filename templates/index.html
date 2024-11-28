@@ -29,11 +29,11 @@
 
    <!-- Left-Aligned Content (Earning History and Summary) -->
    <div class="left-content">
-       <!-- Earning History Section -->
-       <div class="earning-history">
+       <!-- Earning History Section (Only displayed if user is logged in) -->
+       <div class="earning-history" id="earning-history" style="display: none;">
            <h2>Earning History of the User</h2>
            <div style="height: 20px;"></div>
-           <!-- Placeholder for Chart (you can use an image or embed a chart library) -->
+           <!-- Placeholder for Chart -->
            <img src="{{ url_for('static', filename='images/earning_history.png') }}" alt="" />
        </div>
 
@@ -103,7 +103,15 @@
        setInterval(fetchLiveScores, 5000);
 
        // Initial fetch when page loads
-       window.onload = fetchLiveScores;
+       window.onload = function() {
+           fetchLiveScores();
+
+           // Check if the user is logged in by looking for the access token in localStorage
+           if (localStorage.getItem('access_token')) {
+               // If logged in, show the earning history
+               document.getElementById('earning-history').style.display = 'block';
+           }
+       };
    </script>
 
 {% endblock %}

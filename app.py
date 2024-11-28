@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template,session
 from pymongo import MongoClient
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
 from flask_cors import CORS
@@ -247,6 +247,7 @@ def login():
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             # Generate access token
             access_token = create_access_token(identity=username)
+            # session['access_token'] = access_token
             return jsonify({"access_token": access_token, "name": user["Name"]}), 200
         else:
             return jsonify({"message": "Invalid username or password"}), 401
@@ -287,10 +288,13 @@ def signup():
         # Validate password length
         if len(password) < 12:
             return jsonify({"message": "Password is too short"}), 400
+        
+        if "@gmail.com" not in username:
+            return jsonify({"message": "Please use a Gmail account"}), 400
 
         # Check if the user already exists
         if users_collection.find_one({"username": username}):
-            return jsonify({"message": "User already exists"}), 409
+            return jsonify({"message": "User already exists, Please Log In"}), 409
 
         # Ensure required fields are not empty
         if not all([username, password, mobile, name, address]):
@@ -298,7 +302,7 @@ def signup():
 
         # Hash the password and save user data
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        user = {"username": username, "password": hashed_password, "Name": name, "Mobile": mobile, "Address": address, "Role": "user", "wallet_balance":200}
+        user = {"username": username, "password": hashed_password, "Name": name, "Mobile": mobile, "Address": address, "Role": "user"}
 
         # Insert user into database
         users_collection.insert_one(user)
@@ -726,6 +730,12 @@ def past_matches():
 def delete_user(user_id):
 
     # Attempt to delete the user by user_id
+    find_user = users_collection.find_one({"_id": ObjectId(user_id)})
+    user_name = find_user["username"]
+    find_details = list(payment_history_collection.find({"username": user_name}))
+    for item in find_details:
+        payment_history_collection.delete_one({"_id": item["_id"]})
+
     result = users_collection.delete_one({"_id": ObjectId(user_id)})
     
     if result.deleted_count == 1:
