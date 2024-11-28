@@ -743,5 +743,10 @@ def delete_user(user_id):
     else:
         return jsonify({"success": False, "message": "User not found."}), 404
 
+@app.route('/bidding_history', methods=['GET'])
+@jwt_required(optional=True)
+def bidding_history():
+    return render_template('bidding_history.html')
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=4235, debug=True)
