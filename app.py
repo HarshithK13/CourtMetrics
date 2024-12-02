@@ -28,6 +28,7 @@ perGame_collection = db["Player_stats_perGame"]
 perMinute_collection = db["Player_stats_perMinute"]
 total_collection = db["Player_stats_totals"]
 payment_history_collection = db["payment_history"]
+suspicious_bets_collection = db["suspicious_bets"]
 
 @app.route('/')
 def home():
@@ -273,8 +274,166 @@ def admin_login():
 
 @app.route('/admin_home')
 def admin_home():
+    # Get all users
     users = list(users_collection.find({"Role": "user"}))
-    return render_template('admin_home.html', users=users)
+    
+    # Get all betting transactions
+    bets = list(payment_history_collection.find({"transaction_type": "bid"}))
+    
+    # Get suspicious bets
+    suspicious_bets = list(suspicious_bets_collection.find())
+    
+    # Format suspicious bets data
+    formatted_suspicious = []
+    for bet in suspicious_bets:
+        try:
+            # Convert string date to datetime if it's a string
+            if isinstance(bet['date_reported'], str):
+                bet['date_reported'] = datetime.strptime(bet['date_reported'], '%Y-%m-%d %H:%M:%S')
+        except (ValueError, KeyError):
+            bet['date_reported'] = datetime.now()
+            
+        formatted_bet = {
+            'bet_id': str(bet['_id']),
+            'username': bet.get('username', 'Unknown'),
+            'match_id': bet.get('match_id', 'Unknown Match'),
+            'selected_team': bet.get('selected_team', 'Unknown'),
+            'amount': bet.get('amount', 0),
+            'reason': bet.get('reason', ''),
+            'date_reported': bet['date_reported'].strftime('%Y-%m-%d %H:%M:%S'),
+            'status': bet.get('status', 'Under Review')
+        }
+        formatted_suspicious.append(formatted_bet)
+
+    # Format betting data
+    formatted_bets = []
+    for bet in bets:
+        formatted_bet = {
+            'id': str(bet['_id']),
+            'username': bet.get('username', 'Unknown'),
+            'match_id': bet.get('match_id', 'Unknown Match'),
+            'selected_team': bet.get('selected_team', 'Unknown'),
+            'amount': abs(bet.get('amount', 0)),
+            'status': 'Running',
+            'admin_pl': -bet.get('amount', 0)
+        }
+        formatted_bets.append(formatted_bet)
+
+    return render_template(
+        'admin_home.html',
+        users=users,
+        bets=formatted_bets,
+        suspicious_bets=formatted_suspicious
+    )
+
+@app.route('/report_bet', methods=['POST'])
+def report_bet():
+    bet_id = request.form.get('bet_id')
+    reason = request.form.get('reason')
+    
+    if not bet_id or not reason:
+        return jsonify({"success": False, "message": "Missing required fields"}), 400
+    
+    try:
+        # Find the bet in payment history
+        bet = payment_history_collection.find_one({"_id": ObjectId(bet_id)})
+        if not bet:
+            return jsonify({"success": False, "message": "Bet not found"}), 404
+
+        # Create suspicious bet record
+        suspicious_bet = {
+            "bet_id": str(bet["_id"]),
+            "username": bet.get("username", "Unknown"),
+            "match_id": bet.get("match_id", "Unknown Match"),
+            "selected_team": bet.get("selected_team", "Unknown"),
+            "amount": abs(bet.get("amount", 0)),
+            "reason": reason,
+            "date_reported": datetime.now(),
+            "status": "Under Review"
+        }
+        
+        # Insert into suspicious_bets collection
+        suspicious_bets_collection.insert_one(suspicious_bet)
+        
+        # Remove from payment history
+        payment_history_collection.delete_one({"_id": ObjectId(bet_id)})
+        
+        return jsonify({"success": True, "message": "Bet reported successfully"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/delete_suspicious_bet/<bet_id>', methods=['DELETE'])
+def delete_suspicious_bet(bet_id):
+    try:
+        result = suspicious_bets_collection.delete_one({"_id": ObjectId(bet_id)})
+        if result.deleted_count == 1:
+            return jsonify({"success": True, "message": "Suspicious bet deleted successfully."})
+        return jsonify({"success": False, "message": "Bet not found."}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route('/delete_bet/<bet_id>', methods=['DELETE'])
+def delete_bet(bet_id):
+    try:
+        result = payment_history_collection.delete_one({"_id": ObjectId(bet_id)})
+        if result.deleted_count == 1:
+            return jsonify({"success": True, "message": "Bet deleted successfully."})
+        return jsonify({"success": False, "message": "Bet not found."}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/betting_history')
+def betting_history():
+    # Get all betting transactions
+    bets = list(payment_history_collection.find({"transaction_type": "bid"}))
+    
+    # Calculate financial metrics
+    total_bets = len(bets)
+    total_bet_amount = sum(abs(bet.get('amount', 0)) for bet in bets)
+    net_profit = sum(-bet.get('amount', 0) for bet in bets)
+    
+    # Format betting data
+    formatted_bets = []
+    for bet in bets:
+        formatted_bet = {
+            'id': str(bet['_id']),
+            'username': bet.get('username', 'Unknown'),
+            'match_id': bet.get('match_id', 'Unknown Match'),
+            'selected_team': bet.get('selected_team', 'Unknown'),
+            'amount': abs(bet.get('amount', 0)),
+            'status': 'Running',
+            'admin_pl': -bet.get('amount', 0)
+        }
+        formatted_bets.append(formatted_bet)
+
+    return render_template(
+        'admin_betting.html',
+        bets=formatted_bets,
+        total_bets=total_bets,
+        total_bet_amount=total_bet_amount,
+        net_profit=net_profit
+    )
+
+@app.route('/suspicious_bids')
+def suspicious_bids():
+    suspicious_bets = list(suspicious_bets_collection.find())
+    formatted_suspicious = []
+    for bet in suspicious_bets:
+        formatted_bet = {
+            'bet_id': str(bet['_id']),
+            'username': bet.get('username', 'Unknown'),
+            'match_id': bet.get('match_id', 'Unknown Match'),
+            'selected_team': bet.get('selected_team', 'Unknown'),
+            'amount': bet.get('amount', 0),
+            'reason': bet.get('reason', ''),
+            'date_reported': bet['date_reported'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(bet['date_reported'], datetime) else bet['date_reported'],
+            'status': bet.get('status', 'Under Review')
+        }
+        formatted_suspicious.append(formatted_bet)
+    
+    return render_template('suspicious_bids.html', suspicious_bets=formatted_suspicious)
+
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
