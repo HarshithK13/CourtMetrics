@@ -5,9 +5,10 @@ from flask_cors import CORS
 import bcrypt
 import nba_api
 import requests
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from nba_api.live.nba.endpoints import scoreboard
 from bson.objectid import ObjectId  # Import ObjectId to handle MongoDB IDs
+from nba_api.live.nba.endpoints import boxscore
 
 
 app = Flask(__name__)
@@ -70,55 +71,18 @@ def home():
 # Define wallet_balance as a global variable
 wallet_balance = 1000  # Initial dummy balance
 
-@app.route('/available_bids', methods=['GET'])
-@jwt_required(optional=True)  # Optional so that users can still view matches if not logged in
-def available_bids():
-    current_user = get_jwt_identity()  # Get current logged-in user (if any)
-    wallet_balance = None
-
-    if current_user:
-        # Fetch user's wallet balance from MongoDB
-        user_data = users_collection.find_one({"username": current_user})
-        if user_data:
-            wallet_balance = user_data.get("wallet_balance", 1000)  # Default to 1000 if no balance found
-
-    # Fetch today's scoreboard data using nba_api
-    games = scoreboard.ScoreBoard()
-    games_dict = games.get_dict()
-
-    ongoing_matches = []
-
-    if games_dict['scoreboard']['games']:
-        for game in games_dict['scoreboard']['games']:
-            home_team = game['homeTeam']['teamName']
-            away_team = game['awayTeam']['teamName']
-            home_score = game['homeTeam']['score']
-            away_score = game['awayTeam']['score']
-
-            # Add match details to the list of ongoing matches
-            ongoing_matches.append({
-                'match_id': f"{home_team}_vs_{away_team}",
-                'home_team': home_team,
-                'away_team': away_team,
-                'home_score': home_score,
-                'away_score': away_score,
-                'betting_amount': max(150 - (home_score + away_score), 0)  # Example: betting amount decreases as scores increase
-            })
-
-    return render_template('available_bids.html', matches=ongoing_matches, wallet_balance=wallet_balance, current_user=current_user)
-
 @app.route('/place_bid', methods=['POST'])
-@jwt_required() 
+@jwt_required()
 def place_bid():
     global wallet_balance
-    current_user = get_jwt_identity()  
+    current_user = get_jwt_identity()
     match_id = request.form.get('match_id')
-    selected_team = request.form.get('selected_team')  # Either "home" or "away"
+    selected_team = request.form.get('selected_team')
     bet_amount = int(request.form.get('bet_amount'))
-    
+
     user_data = users_collection.find_one({"username": current_user})
     wallet_balance = user_data.get("wallet_balance", 1000)
-    
+
     if bet_amount > wallet_balance:
         return jsonify({'success': False, 'message': 'Insufficient funds!'})
 
@@ -134,13 +98,14 @@ def place_bid():
         'match_id': match_id,
         'selected_team': selected_team,
         'bet_amount': bet_amount,
-        'status': 'pending'
+        'status': 'pending',
+        'user': current_user  # Store the user for later reference
     })
 
-    # Record the transaction in the payment history
+    # Record the transaction in payment history
     payment_record = {
         "username": current_user,
-        "amount": -bet_amount,  # Negative because it's a deduction
+        "amount": -bet_amount,
         "date": datetime.now(),
         "balance_after_transaction": new_balance,
         "transaction_type": "bid",
@@ -151,18 +116,120 @@ def place_bid():
 
     return jsonify({'success': True, 'message': f'Bid placed successfully! Remaining balance: ${new_balance}'})
 
+@app.route('/available_bids', methods=['GET'])
+@jwt_required(optional=True)
+def available_bids():
+    current_user = get_jwt_identity()
+    wallet_balance = None
+
+    if current_user:
+        user_data = users_collection.find_one({"username": current_user})
+        if user_data:
+            wallet_balance = user_data.get("wallet_balance", 1000)
+
+    current_time = datetime.now().time()
+    if current_time >= time(1, 0):
+        update_previous_day_matches(current_user)
+
+    games = scoreboard.ScoreBoard()
+    games_dict = games.get_dict()
+
+    ongoing_matches = []
+
+    if games_dict['scoreboard']['games']:
+        for game in games_dict['scoreboard']['games']:
+            home_team = game['homeTeam']['teamName']
+            away_team = game['awayTeam']['teamName']
+            home_score = game['homeTeam']['score']
+            away_score = game['awayTeam']['score']
+
+            ongoing_matches.append({
+                'match_id': f"{home_team}_vs_{away_team}",
+                'home_team': home_team,
+                'away_team': away_team,
+                'home_score': home_score,
+                'away_score': away_score,
+                'betting_amount': max(115 - (home_score + away_score), 0)
+            })
+
+    return render_template('available_bids.html', matches=ongoing_matches, wallet_balance=wallet_balance, current_user=current_user)
+
+def update_previous_day_matches(current_user):
+    yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+    yesterday_matches = matches_collection.find({"Date": yesterday})
+
+    for match in yesterday_matches:
+        game_id = match['GameID']
+        final_score = get_final_score(game_id)
+
+        if final_score:
+            home_score, away_score = final_score
+            matches_collection.update_one(
+                {"_id": match['_id']},
+                {"$set": {"HomeScore": home_score, "AwayScore": away_score, "Status": "Completed"}}
+            )
+
+            process_bets(match['_id'], home_score, away_score, current_user)
+
+def process_bets(match_id, home_score, away_score, current_user):
+    bets = payment_history_collection.find({"match_id": match_id, "username": current_user, "transaction_type": "bid"})
+
+    for bet in bets:
+        bet_amount = abs(bet['amount'])
+        selected_team = bet['selected_team']
+
+        if (selected_team == 'home' and home_score > away_score) or (selected_team == 'away' and away_score > home_score):
+            reward = bet_amount * 2
+            update_user_balance(current_user, reward)
+            record_transaction(current_user, reward, "bet_win", match_id)
+        elif home_score == away_score:
+            update_user_balance(current_user, bet_amount)
+            record_transaction(current_user, bet_amount, "bet_refund", match_id)
+
+def update_user_balance(username, amount):
+    users_collection.update_one(
+        {"username": username},
+        {"$inc": {"wallet_balance": amount}}
+    )
+
+def record_transaction(username, amount, transaction_type, match_id):
+    payment_record = {
+        "username": username,
+        "amount": amount,
+        "date": datetime.now(),
+        "balance_after_transaction": users_collection.find_one({"username": username})['wallet_balance'],
+        "transaction_type": transaction_type,
+        "match_id": match_id
+    }
+    payment_history_collection.insert_one(payment_record)
+
+def get_final_score(game_id):
+    try:
+        # Fetch the boxscore data for the given game_id
+        box_score = boxscore.BoxScore(game_id=game_id)
+        game_data = box_score.get_dict()
+
+        # Extract the scores
+        home_score = game_data['game']['homeTeam']['score']
+        away_score = game_data['game']['awayTeam']['score']
+
+        # Check if the game is finished
+        if game_data['game']['gameStatus'] == 3:  # 3 indicates a completed game
+            return (home_score, away_score)
+        else:
+            return None  # Game not finished yet
+    except Exception as e:
+        print(f"Error fetching score for game {game_id}: {str(e)}")
+        return None
 
 @app.route('/check_results')
 def check_results():
     global wallet_balance
-
-    # Fetch today's scoreboard data using nba_api to get final scores
-    games = scoreboard.ScoreBoard()
-    games_dict = games.get_dict()
+    games = scoreboard.ScoreBoard().get_dict()
 
     results_messages = []
-
-    for game in games_dict['scoreboard']['games']:
+    
+    for game in games['scoreboard']['games']:
         if game['gameStatusText'] == "Final":
             home_team_name = game['homeTeam']['teamName']
             away_team_name = game['awayTeam']['teamName']
@@ -176,24 +243,32 @@ def check_results():
                         if home_score > away_score:  # Home team wins
                             wallet_balance += bid['bet_amount'] * 2  # Double reward
                             results_messages.append(f"Your team {home_team_name} won! You earned ${bid['bet_amount'] * 2}.")
+                            # Add this line after updating wallet_balance in check_results function
+                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                         elif home_score == away_score:  # Draw
                             wallet_balance += bid['bet_amount']  # Refund original bet amount
                             results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
+                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                         else:
+
                             results_messages.append(f"Your team {home_team_name} lost.")
+                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                     elif bid['selected_team'] == "away":
                         if away_score > home_score:  # Away team wins
                             wallet_balance += bid['bet_amount'] * 2  # Double reward
                             results_messages.append(f"Your team {away_team_name} won! You earned ${bid['bet_amount'] * 2}.")
+                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                         elif away_score == home_score:  # Draw
                             wallet_balance += bid['bet_amount']  # Refund original bet amount
                             results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
+                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                         else:
                             results_messages.append(f"Your team {away_team_name} lost.")
+                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
 
                     # Mark this bid as resolved
                     bid['status'] = "resolved"
-
+    
     return jsonify({'success': True, 'results_messages': results_messages, 'wallet_balance': wallet_balance})
 
 
@@ -469,6 +544,8 @@ def signup():
 
     # Render the signup form for GET request
     return render_template('signup.html')
+
+
 @app.route('/schedules')
 def schedules():
     return render_template('schedules.html')
@@ -585,6 +662,50 @@ def add_funds():
     payment_history_collection.insert_one(payment_record)
     
     return jsonify({'success': True, 'message': f'Funds added successfully! New balance: ${new_balance}', 'wallet_balance': new_balance}), 200
+
+
+@app.route('/withdraw_funds', methods=['POST'])
+@jwt_required()
+def withdraw_funds():
+    current_user = get_jwt_identity()
+    amount_to_withdraw = request.form.get('amount')
+    
+    if not amount_to_withdraw or not amount_to_withdraw.isdigit():
+        return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+    
+    amount_to_withdraw = int(amount_to_withdraw)
+    user_data = users_collection.find_one({"username": current_user})
+    
+    if not user_data:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+    
+    current_balance = user_data.get("wallet_balance", 0)
+    if amount_to_withdraw > current_balance:
+        return jsonify({'success': False, 'message': 'Insufficient funds'}), 400
+    
+    # Update the user's wallet balance
+    new_balance = current_balance - amount_to_withdraw
+    users_collection.update_one(
+        {"username": current_user}, 
+        {"$set": {"wallet_balance": new_balance}}
+    )
+    
+    # Record the transaction in the payment history
+    payment_record = {
+        "username": current_user,
+        "amount": -amount_to_withdraw,
+        "date": datetime.now(),
+        "balance_after_transaction": new_balance,
+        "transaction_type": "withdraw_funds"
+    }
+    payment_history_collection.insert_one(payment_record)
+    
+    return jsonify({
+        'success': True, 
+        'message': f'Withdrawal successful! New balance: ${new_balance}',
+        'wallet_balance': new_balance
+    }), 200
+
 
 
 @app.route("/get_team_stats", methods=["GET"])

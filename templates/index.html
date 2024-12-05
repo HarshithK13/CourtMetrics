@@ -30,12 +30,28 @@
    <!-- Left-Aligned Content (Earning History and Summary) -->
    <div class="left-content">
        <!-- Earning History Section (Only displayed if user is logged in) -->
-       <div class="earning-history" id="earning-history" style="display: none;">
-           <h2>Earning History of the User</h2>
-           <div style="height: 20px;"></div>
-           <!-- Placeholder for Chart -->
-           <img src="{{ url_for('static', filename='images/earning_history.png') }}" alt="" />
-       </div>
+        <div class="earning-history" id="earning-history" style="display: none;">
+            <h2>Earning History</h2>
+            
+            <!-- Date Filters -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="start-date">From:</label>
+                    <input type="date" id="history-start-date">
+                </div>
+                <div class="filter-group">
+                    <label for="end-date">To:</label>
+                    <input type="date" id="history-end-date">
+                </div>
+                <button onclick="updateEarningHistory()" class="filter-button">Apply Filters</button>
+            </div>
+        
+            <div class="chart-container">
+                <canvas id="earningChart"></canvas>
+            </div>
+        </div>
+
+
 
        <!-- Summary of Most Recent Completed Match -->
        {% if completed_match_summary %}
@@ -47,6 +63,7 @@
    </div> <!-- End of left-content -->
 
    <!-- JavaScript to Fetch Live Scores Every 5 Seconds -->
+   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
    <script>
        function fetchLiveScores() {
            fetch('/live_scores')
@@ -102,16 +119,102 @@
        // Fetch live scores every 5 seconds
        setInterval(fetchLiveScores, 5000);
 
+    async function fetchEarningHistory() {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        try {
+            const response = await fetch('/api/payment_history?page=1', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            
+            // Process data for chart
+            const transactions = data.transactions;
+            const dates = transactions.map(t => new Date(t.date).toLocaleDateString());
+            const balances = transactions.map(t => t.balance_after_transaction);
+
+            // Create chart
+            const ctx = document.getElementById('earningChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates.reverse(),
+                    datasets: [{
+                        label: 'Balance History',
+                        data: balances.reverse(),
+                        borderColor: '#ff6600',
+                        backgroundColor: 'rgba(255, 102, 0, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Balance Over Time'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching earning history:', error);
+        }
+    }
+
        // Initial fetch when page loads
        window.onload = function() {
-           fetchLiveScores();
-
-           // Check if the user is logged in by looking for the access token in localStorage
-           if (localStorage.getItem('access_token')) {
-               // If logged in, show the earning history
-               document.getElementById('earning-history').style.display = 'block';
-           }
-       };
+            fetchLiveScores();
+            if (localStorage.getItem('access_token')) {
+                document.getElementById('earning-history').style.display = 'block';
+                fetchEarningHistory();
+            }
+        };
    </script>
+
+    <style>
+        .match-filter {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+    
+        .match-filter select {
+            padding: 8px 16px;
+            font-size: 16px;
+            border: 2px solid #ff6600;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+    
+        .match-filter select:hover {
+            border-color: #000000;
+            box-shadow: 0 0 10px rgba(255, 102, 0, 0.3);
+        }
+    
+        .match-filter select:focus {
+            outline: none;
+            border-color: #000000;
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.5);
+        }
+    </style>
 
 {% endblock %}
