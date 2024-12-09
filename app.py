@@ -9,6 +9,8 @@ from datetime import datetime, time, timedelta
 from nba_api.live.nba.endpoints import scoreboard
 from bson.objectid import ObjectId  # Import ObjectId to handle MongoDB IDs
 from nba_api.live.nba.endpoints import boxscore
+import pandas as pd
+import joblib
 
 
 app = Flask(__name__)
@@ -64,6 +66,7 @@ def home():
             'home_score': home_score,
             'away_score': away_score
         })
+
 
     
     return render_template('index.html', live_scores=live_scores, completed_match_summary=completed_match_summary)
@@ -221,6 +224,66 @@ def get_final_score(game_id):
     except Exception as e:
         print(f"Error fetching score for game {game_id}: {str(e)}")
         return None
+
+
+@app.route('/predict', methods=['GET'])
+def predict():
+    home_team = request.args.get('home_team')
+    away_team = request.args.get('away_team')
+
+    team_mapping = {"Celtics": "Boston Celtics",
+                    "Nets": "Brooklyn Nets",
+                    "Knicks": "New York Knicks",
+                    "76ers": "Philadelphia 76ers",
+                    "Raptors": "Toronto Raptors",
+                    "Bulls": "Chicago Bulls",
+                    "Cavaliers": "Cleveland Cavaliers",
+                    "Pistons": "Detroit Pistons",
+                    "Pacers": "Indiana Pacers",
+                    "Bucks": "Milwaukee Bucks",
+                    "Hawks": "Atlanta Hawks",
+                    "Hornets": "Charlotte Hornets",
+                    "Heat": "Miami Heat",
+                    "Magic": "Orlando Magic",
+                    "Wizards": "Washington Wizards",
+                    "Nuggets": "Denver Nuggets",
+                    "Timberwolves": "Minnesota Timberwolves",
+                    "Thunder": "Oklahoma City Thunder",
+                    "Trail Blazers": "Portland Trail Blazers",
+                    "Jazz": "Utah Jazz",
+                    "Warriors": "Golden State Warriors",
+                    "Clippers": "Los Angeles Clippers",
+                    "Lakers": "Los Angeles Lakers",
+                    "Suns": "Phoenix Suns",
+                    "Kings": "Sacramento Kings",
+                    "Mavericks": "Dallas Mavericks",
+                    "Rockets": "Houston Rockets",
+                    "Grizzlies": "Memphis Grizzlies",
+                    "Pelicans": "New Orleans Pelicans",
+                    "Spurs": "San Antonio Spurs"}
+
+    model = joblib.load('random_forest_model.joblib')
+    label_encoder_visitor = joblib.load('label_encoder_visitor.joblib')
+    label_encoder_home = joblib.load('label_encoder_home.joblib')
+    label_encoder_won = joblib.load('label_encoder_won.joblib')
+
+    future_match = pd.DataFrame({
+        "Visitor/Neutral_encoded": label_encoder_visitor.transform([team_mapping[away_team]]),
+        "Home/Neutral_encoded": label_encoder_home.transform([team_mapping[home_team]])
+    })
+
+    future_pred = model.predict(future_match)
+    predicted_winner = label_encoder_won.inverse_transform(future_pred)
+    future_pred_proba = model.predict_proba(future_match)
+
+    prob_visitor = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[away_team]])[0]][0]
+    prob_home = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[home_team]])[0]][0]
+
+    return jsonify({
+        "predicted_winner": predicted_winner[0],
+        "prob_visitor": prob_visitor* 100,
+        "prob_home": prob_home* 100
+    })
 
 @app.route('/check_results')
 def check_results():
@@ -953,56 +1016,59 @@ def get_player_stats():
 
 @app.route("/past_matches", methods=["GET"])
 def past_matches():
+    page = int(request.args.get("page", 1))  # Default to page 1
+    per_page = 10  # Items per page
     month = request.args.get("month", "").strip()
     team = request.args.get("team", "").strip()
 
     query = {}
     if month:
-        query["Date"] = {"$regex": f"{month}", "$options": "i"}
+        query["Date"] = {"$regex": f"{month[:3]}", "$options": "i"}
     if team:
         query["$or"] = [
             {"Visitor/Neutral": {"$regex": team, "$options": "i"}},
             {"Home/Neutral": {"$regex": team, "$options": "i"}}
         ]
 
-    # Get matches from past_matches collection
+    # Fetch and sort matches from the collection
     matches = list(db["past_matches"].find(query))
 
-    # Filter out entries where Date field is empty or just contains "Date"
-    matches = [match for match in matches if match.get("Date") and match.get("Date").strip().lower() != "date"]
-
-    # Sort matches by date
+    # Filter out invalid dates and convert to datetime for sorting
     for match in matches:
         match["_id"] = str(match["_id"])
         try:
+            match["DateObj"] = datetime.strptime(match["Date"], "%Y-%m-%d")
+        except ValueError:
             try:
-                match["DateObj"] = datetime.strptime(match["Date"], "%Y-%m-%d")
+                match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
             except ValueError:
-                try:
-                    match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
-                except ValueError:
-                    match["DateObj"] = datetime.now()
-        except Exception as e:
-            print(f"Error parsing date: {e}")
-            match["DateObj"] = datetime.now()
-    
+                match["DateObj"] = datetime.min
+
+    # Sort matches by DateObj in descending order
     sorted_matches = sorted(matches, key=lambda x: x["DateObj"], reverse=True)
-    
-    # Remove temporary DateObj field
-    for match in sorted_matches:
+
+    # Pagination logic
+    total_matches = len(sorted_matches)
+    total_pages = (total_matches + per_page - 1) // per_page
+    paginated_matches = sorted_matches[(page - 1) * per_page: page * per_page]
+
+    # Remove temporary DateObj field before rendering
+    for match in paginated_matches:
         del match["DateObj"]
 
-    # Get distinct teams for filter
+    # Get distinct teams for filter dropdown
     teams_list = list(db["past_matches"].distinct("Visitor/Neutral")) + \
                  list(db["past_matches"].distinct("Home/Neutral"))
     teams_list = sorted(list(set(teams_list)))  # Remove duplicates and sort
 
     return render_template(
         "past_matches.html",
-        matches=sorted_matches,
+        matches=paginated_matches,
         teams=teams_list,
         selected_month=month,
-        selected_team=team
+        selected_team=team,
+        current_page=page,
+        total_pages=total_pages
     )
 
 

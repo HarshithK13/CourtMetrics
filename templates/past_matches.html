@@ -79,17 +79,34 @@
             <p class="text-center">No matches available. Please adjust your filters.</p>
         {% endif %}
     {% endif %}
+
+    <!-- Pagination Controls -->
+    {% if total_pages > 1 %}
+    <div class="pagination text-center">
+        {% if current_page > 1 %}
+        <a href="{{ url_for('past_matches', page=current_page - 1, month=selected_month, team=selected_team) }}" class="btn btn-outline-primary">
+            Previous
+        </a>
+        {% endif %}
+        <span class="current-page">Page {{ current_page }} of {{ total_pages }}</span>
+        {% if current_page < total_pages %}
+        <a href="{{ url_for('past_matches', page=current_page + 1, month=selected_month, team=selected_team) }}" class="btn btn-outline-primary">
+            Next
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 
 <script>
 document.getElementById("search-btn").addEventListener("click", function() {
     const month = document.getElementById("month-select").value;
     const team = document.getElementById("team-select").value;
-    
+
     let url = "/past_matches?";
     if (month) url += `month=${encodeURIComponent(month)}&`;
     if (team) url += `team=${encodeURIComponent(team)}`;
-    
+
     window.location.href = url;
 });
 </script>
@@ -109,6 +126,22 @@ document.getElementById("search-btn").addEventListener("click", function() {
 .table td {
     text-align: center;
     vertical-align: middle;
+}
+
+.pagination {
+    margin: 20px 0;
+}
+
+.pagination a {
+    margin: 0 10px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.pagination .current-page {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #333;
 }
 </style>
 {% endblock %}
