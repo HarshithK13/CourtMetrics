@@ -67,6 +67,7 @@ def home():
             'away_score': away_score
         })
 
+
     
     return render_template('index.html', live_scores=live_scores, completed_match_summary=completed_match_summary)
 
