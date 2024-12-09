@@ -1016,6 +1016,8 @@ def get_player_stats():
 
 @app.route("/past_matches", methods=["GET"])
 def past_matches():
+    page = int(request.args.get("page", 1))  # Default to page 1
+    per_page = 10  # Items per page
     month = request.args.get("month", "").strip()
     team = request.args.get("team", "").strip()
 
@@ -1028,43 +1030,45 @@ def past_matches():
             {"Home/Neutral": {"$regex": team, "$options": "i"}}
         ]
 
-    # Get matches from past_matches collection
+    # Fetch and sort matches from the collection
     matches = list(db["past_matches"].find(query))
-    # Filter out entries where Date field is empty or just contains "Date"
-    matches = [match for match in matches if match.get("Date") and match.get("Date").strip().lower() != "date"]
 
-    # Sort matches by date
+    # Filter out invalid dates and convert to datetime for sorting
     for match in matches:
         match["_id"] = str(match["_id"])
         try:
+            match["DateObj"] = datetime.strptime(match["Date"], "%Y-%m-%d")
+        except ValueError:
             try:
-                match["DateObj"] = datetime.strptime(match["Date"], "%Y-%m-%d")
+                match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
             except ValueError:
-                try:
-                    match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
-                except ValueError:
-                    match["DateObj"] = datetime.now()
-        except Exception as e:
-            print(f"Error parsing date: {e}")
-            match["DateObj"] = datetime.now()
-    
+                match["DateObj"] = datetime.min
+
+    # Sort matches by DateObj in descending order
     sorted_matches = sorted(matches, key=lambda x: x["DateObj"], reverse=True)
-    
-    # Remove temporary DateObj field
-    for match in sorted_matches:
+
+    # Pagination logic
+    total_matches = len(sorted_matches)
+    total_pages = (total_matches + per_page - 1) // per_page
+    paginated_matches = sorted_matches[(page - 1) * per_page: page * per_page]
+
+    # Remove temporary DateObj field before rendering
+    for match in paginated_matches:
         del match["DateObj"]
 
-    # Get distinct teams for filter
+    # Get distinct teams for filter dropdown
     teams_list = list(db["past_matches"].distinct("Visitor/Neutral")) + \
                  list(db["past_matches"].distinct("Home/Neutral"))
     teams_list = sorted(list(set(teams_list)))  # Remove duplicates and sort
 
     return render_template(
         "past_matches.html",
-        matches=sorted_matches,
+        matches=paginated_matches,
         teams=teams_list,
         selected_month=month,
-        selected_team=team
+        selected_team=team,
+        current_page=page,
+        total_pages=total_pages
     )
 
 
