@@ -1091,6 +1091,18 @@ def get_player_stats():
 
 @app.route("/past_matches", methods=["GET"])
 def past_matches():
+    # Get distinct teams for filter dropdown
+    teams_list = list(db["past_matches"].distinct("Visitor/Neutral")) + \
+                 list(db["past_matches"].distinct("Home/Neutral"))
+    teams_list = sorted(list(set(teams_list)))  # Remove duplicates and sort
+
+    return render_template("past_matches.html",
+                           teams=teams_list)
+
+
+@app.route("/api/past_matches", methods=["GET"])
+def api_past_matches():
+
     page = int(request.args.get("page", 1))  # Default to page 1
     per_page = 10  # Items per page
     month = request.args.get("month", "").strip()
@@ -1117,34 +1129,28 @@ def past_matches():
             try:
                 match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
             except ValueError:
-                match["DateObj"] = datetime.min
-
+                match["DateObj"] = datetime.min  
+   
     # Sort matches by DateObj in descending order
     sorted_matches = sorted(matches, key=lambda x: x["DateObj"], reverse=True)
 
-    # Pagination logic
+     # Pagination logic
     total_matches = len(sorted_matches)
     total_pages = (total_matches + per_page - 1) // per_page
-    paginated_matches = sorted_matches[(page - 1) * per_page: page * per_page]
+    matches = sorted_matches[(page - 1) * per_page: page * per_page]
 
     # Remove temporary DateObj field before rendering
-    for match in paginated_matches:
+    for match in matches:
         del match["DateObj"]
 
-    # Get distinct teams for filter dropdown
-    teams_list = list(db["past_matches"].distinct("Visitor/Neutral")) + \
-                 list(db["past_matches"].distinct("Home/Neutral"))
-    teams_list = sorted(list(set(teams_list)))  # Remove duplicates and sort
+    for match in matches:
+        match["_id"] = str(match["_id"])
 
-    return render_template(
-        "past_matches.html",
-        matches=paginated_matches,
-        teams=teams_list,
-        selected_month=month,
-        selected_team=team,
-        current_page=page,
-        total_pages=total_pages
-    )
+    return jsonify({
+        "matches": matches,
+        "current_page": page,
+        "total_pages": total_pages
+    })
 
 
 @app.route('/delete_user/<user_id>', methods=['DELETE'])

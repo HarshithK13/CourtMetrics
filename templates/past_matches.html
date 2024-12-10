@@ -6,109 +6,148 @@
 <div class="container my-5">
     <h2 class="text-center mb-4">Past Match Results</h2>
 
-    <!-- Month Filter -->
-    <div class="text-center mb-4">
-        <label for="month-select" class="form-label">Select Month:</label>
-        <select id="month-select" class="form-select w-auto">
-            <option value="">All Months</option>
-            {% for month in ['January', 'February', 'March', 'April', 'May', 'June', 
-                           'July', 'August', 'September', 'October', 'November', 'December'] %}
-            <option value="{{ month }}" {% if selected_month == month %}selected{% endif %}>
-                {{ month }}
-            </option>
-            {% endfor %}
-        </select>
-    </div>
+    <!-- Filters -->
+    <div class="d-flex justify-content-center mb-4">
+        <!-- Month Filter -->
+        <div class="me-3">
+            <label for="month-select" class="form-label">Select Month:</label>
+            <select id="month-select" class="form-select">
+                <option value="">All Months</option>
+                {% for month in ['January', 'February', 'March', 'April', 'May', 'June', 
+                               'July', 'August', 'September', 'October', 'November', 'December'] %}
+                <option value="{{ month }}">{{ month }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <!-- Team Filter -->
-    <div class="text-center mb-4">
-        <label for="team-select" class="form-label">Select Team:</label>
-        <select id="team-select" class="form-select w-auto">
-            <option value="">All Teams</option>
-            {% for team in teams %}
-            <option value="{{ team }}" {% if selected_team == team %}selected{% endif %}>
-                {{ team }}
-            </option>
-            {% endfor %}
-        </select>
-    </div>
+        <!-- Team Filter -->
+        <div class="me-3">
+            <label for="team-select" class="form-label">Select Team:</label>
+            <select id="team-select" class="form-select">
+                <option value="">All Teams</option>
+                {% for team in teams %}
+                <option value="{{ team }}">{{ team }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <!-- Search Button -->
-    <div class="text-center mb-4">
-        <button id="search-btn" class="btn btn-primary">Search Matches</button>
+        <!-- Search Button -->
+        <div class="align-self-end">
+            <button id="search-btn" class="btn btn-primary">Search Matches</button>
+        </div>
     </div>
 
     <!-- Results Table -->
-    {% if matches %}
-        <div class="table-responsive">
-            <table class="user-table table table-bordered table-hover">
-                <thead class="table-dark">
-                    <tr>
-                        <th colspan="2" style="text-align: center">Date</th>
-                        <th colspan="2" style="text-align: center">Visitor</th>
-                        <th colspan="2" style="text-align: center">Home</th>
-                        <th colspan="1" style="text-align: center">Additional</th>
-                    </tr>
-                    <tr>
-                        <th>Day</th>
-                        <th>Date</th>
-                        <th>Team</th>
-                        <th>Points</th>
-                        <th>Team</th>
-                        <th>Points</th>
-                        <th>OT</th>
-                    </tr>
-                </thead>
-                <tbody id="matches-table-body">
-                    {% for match in matches %}
-                    <tr>
-                        <td>{{ match.Date.split(',')[0] }}</td>
-                        <td>{{ match.Date.split(',')[1:] | join(',') }}</td>
-                        <td>{{ match['Visitor/Neutral'] }}</td>
-                        <td>{{ match.PTS }}</td>
-                        <td>{{ match['Home/Neutral'] }}</td>
-                        <td>{{ match.Home_PTS }}</td>
-                        <td>{{ match['no. of OT'] if match['no. of OT'] else '-' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        {% if not error %}
-            <p class="text-center">No matches available. Please adjust your filters.</p>
-        {% endif %}
-    {% endif %}
-
-    <!-- Pagination Controls -->
-    {% if total_pages > 1 %}
-    <div class="pagination text-center">
-        {% if current_page > 1 %}
-        <a href="{{ url_for('past_matches', page=current_page - 1, month=selected_month, team=selected_team) }}" class="btn btn-outline-primary">
-            Previous
-        </a>
-        {% endif %}
-        <span class="current-page">Page {{ current_page }} of {{ total_pages }}</span>
-        {% if current_page < total_pages %}
-        <a href="{{ url_for('past_matches', page=current_page + 1, month=selected_month, team=selected_team) }}" class="btn btn-outline-primary">
-            Next
-        </a>
-        {% endif %}
+    <div id="matches-container" class="table-responsive">
+        <table class="user-table table table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th colspan="2" style="text-align: center">Date</th>
+                    <th colspan="2" style="text-align: center">Visitor</th>
+                    <th colspan="2" style="text-align: center">Home</th>
+                    <th colspan="1" style="text-align: center">Additional</th>
+                </tr>
+                <tr>
+                    <th>Day</th>
+                    <th>Date</th>
+                    <th>Team</th>
+                    <th>Points</th>
+                    <th>Team</th>
+                    <th>Points</th>
+                    <th>OT</th>
+                </tr>
+            </thead>
+            <tbody id="matches-table-body">
+                <!-- Matches will be loaded here dynamically -->
+            </tbody>
+        </table>
     </div>
-    {% endif %}
+
+    <!-- Pagination -->
+    <div id="pagination" class="text-center mt-4">
+        <button id="prev-page" class="btn btn-secondary me-2">Previous</button>
+        <span id="page-info"> Page&nbsp;</span>
+        <span id="current-page">1</span>
+        <span id="page-info">&nbsp;of&nbsp;</span>
+        <span id="total-pages"> 1</span>
+        <button id="next-page" class="btn btn-secondary ms-2">Next</button>
+    </div>
 </div>
 
 <script>
-document.getElementById("search-btn").addEventListener("click", function() {
+let currentPage = 1;
+
+document.addEventListener("DOMContentLoaded", function () {
+    loadMatches();
+
+    document.getElementById("search-btn").addEventListener("click", function () {
+        currentPage = 1;
+        loadMatches();
+    });
+
+    document.getElementById("prev-page").addEventListener("click", function () {
+        if (currentPage > 1) {
+            currentPage--;
+            loadMatches();
+        }
+    });
+
+    document.getElementById("next-page").addEventListener("click", function () {
+        const totalPages = parseInt(document.getElementById("total-pages").textContent);
+        if (currentPage < totalPages) {
+            currentPage++;
+            loadMatches();
+        }
+    });
+});
+
+function updatePaginationControls() {
+    const totalPages = parseInt(document.getElementById("total-pages").textContent);
+    document.getElementById('prev-page').disabled = currentPage === 1;
+    document.getElementById('next-page').disabled = currentPage === totalPages;
+}
+
+function loadMatches() {
     const month = document.getElementById("month-select").value;
     const team = document.getElementById("team-select").value;
 
-    let url = "/past_matches?";
-    if (month) url += `month=${encodeURIComponent(month)}&`;
-    if (team) url += `team=${encodeURIComponent(team)}`;
+    fetch(`/api/past_matches?page=${currentPage}&month=${month}&team=${team}`)
+        .then(response => response.json())
+        .then(data => {
+            const matchesTableBody = document.getElementById("matches-table-body");
+            const paginationContainer = document.getElementById("pagination");
 
-    window.location.href = url;
-});
+            matchesTableBody.innerHTML = "";
+
+            if (data.matches.length === 0) {
+                matchesTableBody.innerHTML = "<tr><td colspan='7' class='text-center'>No matches found.</td></tr>";
+                paginationContainer.style.display = "none";
+                return;
+            }
+
+            data.matches.forEach(match => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${match.Date.split(',')[0]}</td>
+                    <td>${match.Date.split(',').slice(1).join(',')}</td>
+                    <td>${match["Visitor/Neutral"]}</td>
+                    <td>${match.PTS}</td>
+                    <td>${match["Home/Neutral"]}</td>
+                    <td>${match.Home_PTS}</td>
+                    <td>${match["no. of OT"] || '-'}</td>
+                `;
+                matchesTableBody.appendChild(row);
+            });
+
+            document.getElementById("current-page").textContent = data.current_page;
+            document.getElementById("total-pages").textContent = data.total_pages;
+            updatePaginationControls();
+
+        })
+        .catch(error => {
+            console.error("Error loading matches:", error);
+        });
+}
 </script>
 
 <style>
@@ -128,20 +167,36 @@ document.getElementById("search-btn").addEventListener("click", function() {
     vertical-align: middle;
 }
 
-.pagination {
-    margin: 20px 0;
+#pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
 }
 
-.pagination a {
-    margin: 0 10px;
-    text-decoration: none;
+#pagination button {
+    padding: 8px 12px;
+    margin: 0 5px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+#pagination button:disabled {
+    background-color: #eaeaea;
+    cursor: not-allowed;
+}
+
+#pagination #page-info {
     font-weight: bold;
 }
 
-.pagination .current-page {
-    font-size: 1.1em;
+#pagination #current-page {
     font-weight: bold;
-    color: #333;
+}
+
+#pagination #total-pages {
+    font-weight: bold;
 }
 </style>
 {% endblock %}
