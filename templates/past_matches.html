@@ -38,63 +38,39 @@
     </div>
 
     <!-- Results Table -->
-    {% if matches %}
-        <div class="table-responsive">
-            <table class="user-table table table-bordered table-hover">
-                <thead class="table-dark">
-                    <tr>
-                        <th colspan="2" style="text-align: center">Date</th>
-                        <th colspan="2" style="text-align: center">Visitor</th>
-                        <th colspan="2" style="text-align: center">Home</th>
-                        <th colspan="1" style="text-align: center">Additional</th>
-                    </tr>
-                    <tr>
-                        <th>Day</th>
-                        <th>Date</th>
-                        <th>Team</th>
-                        <th>Points</th>
-                        <th>Team</th>
-                        <th>Points</th>
-                        <th>OT</th>
-                    </tr>
-                </thead>
-                <tbody id="matches-table-body">
-                    {% for match in matches %}
-                    <tr>
-                        <td>{{ match.Date.split(',')[0] }}</td>
-                        <td>{{ match.Date.split(',')[1:] | join(',') }}</td>
-                        <td>{{ match['Visitor/Neutral'] }}</td>
-                        <td>{{ match.PTS }}</td>
-                        <td>{{ match['Home/Neutral'] }}</td>
-                        <td>{{ match.Home_PTS }}</td>
-                        <td>{{ match['no. of OT'] if match['no. of OT'] else '-' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        {% if not error %}
-            <p class="text-center">No matches available. Please adjust your filters.</p>
-        {% endif %}
-    {% endif %}
+    <div id="matches-container" class="table-responsive">
+        <table class="user-table table table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th colspan="2" style="text-align: center">Date</th>
+                    <th colspan="2" style="text-align: center">Visitor</th>
+                    <th colspan="2" style="text-align: center">Home</th>
+                    <th colspan="1" style="text-align: center">Additional</th>
+                </tr>
+                <tr>
+                    <th>Day</th>
+                    <th>Date</th>
+                    <th>Team</th>
+                    <th>Points</th>
+                    <th>Team</th>
+                    <th>Points</th>
+                    <th>OT</th>
+                </tr>
+            </thead>
+            <tbody id="matches-table-body">
+                <!-- Matches will be loaded here dynamically -->
+            </tbody>
+        </table>
+    </div>
 
-    <!-- Pagination Controls -->
-    {% if total_pages > 1 %}
-    <div class="pagination text-center">
-        {% if current_page > 1 %}
-        <a href="{{ url_for('past_matches', page=current_page - 1, month=selected_month, team=selected_team) }}" class="btn btn-outline-primary">
-            Previous
-        </a>
-        {% endif %}
-        
-        <span class="current-page">Page {{ current_page }} of {{ total_pages }}</span>
-        
-        {% if current_page < total_pages %}
-        <a href="{{ url_for('past_matches', page=current_page + 1, month=selected_month, team=selected_team) }}" class="btn btn-outline-primary">
-            Next
-        </a>
-        {% endif %}
+    <!-- Pagination -->
+    <div id="pagination" class="text-center mt-4">
+        <button id="prev-page" class="btn btn-secondary me-2">Previous</button>
+        <span id="page-info"> Page&nbsp;</span>
+        <span id="current-page">1</span>
+        <span id="page-info">&nbsp;of&nbsp;</span>
+        <span id="total-pages"> 1</span>
+        <button id="next-page" class="btn btn-secondary ms-2">Next</button>
     </div>
 </div>
 

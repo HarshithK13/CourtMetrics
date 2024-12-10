@@ -16,7 +16,6 @@ from email.mime.multipart import MIMEMultipart
 import time
 import pandas as pd
 import joblib
-import os
 
 
 app = Flask(__name__)
@@ -24,7 +23,7 @@ app.config["JWT_SECRET_KEY"] = "83114bdeeb269275f27c98dea61244b1e27d495581b516d6
 jwt = JWTManager(app)
 # Enable CORS for cross-origin requests
 CORS(app)
-wallet = 100
+wallet = 1000
 placed_bids = []
 # MongoDB setup
 connection_string = "mongodb+srv://court-metrics:k2vCw0PaWW2v7k7N@cluster0.tqzmo.mongodb.net/"
@@ -78,7 +77,7 @@ def home():
     return render_template('index.html', live_scores=live_scores, completed_match_summary=completed_match_summary)
 
 # Define wallet_balance as a global variable
-wallet_balance = 100  # Initial dummy balance
+wallet_balance = 1000  # Initial dummy balance
 
 @app.route('/place_bid', methods=['POST'])
 @jwt_required()
@@ -125,46 +124,6 @@ def place_bid():
 
     return jsonify({'success': True, 'message': f'Bid placed successfully! Remaining balance: ${new_balance}'})
 
-def get_match_prediction(home_team, away_team):
-    team_mapping = {
-        "Celtics": "Boston Celtics",
-        "Nets": "Brooklyn Nets",
-        "Knicks": "New York Knicks",
-        # Add all other team mappings here...
-    }
-    # Verify if model file exists
-    model_path = 'random_forest_model.joblib'
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found at {model_path}")
-
-    try:
-        # Load the pre-trained model and encoders
-        model = joblib.load(model_path)
-        label_encoder_visitor = joblib.load('label_encoder_visitor.joblib')
-        label_encoder_home = joblib.load('label_encoder_home.joblib')
-        label_encoder_won = joblib.load('label_encoder_won.joblib')
-    except ValueError as e:
-        raise RuntimeError(
-            f"Failed to load model or encoders due to compatibility issues: {e}. "
-            "Ensure scikit-learn and joblib versions match those used during saving."
-        )
-
-
-    future_match = pd.DataFrame({
-        "Visitor/Neutral_encoded": label_encoder_visitor.transform([team_mapping[away_team]]),
-        "Home/Neutral_encoded": label_encoder_home.transform([team_mapping[home_team]])
-    })
-
-    future_pred = model.predict(future_match)
-    predicted_winner = label_encoder_won.inverse_transform(future_pred)[0]
-    future_pred_proba = model.predict_proba(future_match)
-
-    prob_visitor = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[away_team]])[0]][0] * 100
-    prob_home = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[home_team]])[0]][0] * 100
-
-    return predicted_winner, prob_home, prob_visitor
-
-
 @app.route('/available_bids', methods=['GET'])
 @jwt_required(optional=True)
 def available_bids():
@@ -192,27 +151,16 @@ def available_bids():
             home_score = game['homeTeam']['score']
             away_score = game['awayTeam']['score']
 
-            # Fetch prediction for the match
-            predicted_winner, prob_home, prob_visitor = get_match_prediction(home_team, away_team)
-
             ongoing_matches.append({
                 'match_id': f"{home_team}_vs_{away_team}",
                 'home_team': home_team,
                 'away_team': away_team,
                 'home_score': home_score,
                 'away_score': away_score,
-                'betting_amount': max(115 - (home_score + away_score), 0),
-                'predicted_winner': predicted_winner,
-                'prob_home': prob_home,
-                'prob_visitor': prob_visitor
+                'betting_amount': max(115 - (home_score + away_score), 0)
             })
 
-    return render_template(
-        'available_bids.html',
-        matches=ongoing_matches,
-        wallet_balance=wallet_balance,
-        current_user=current_user
-    )
+    return render_template('available_bids.html', matches=ongoing_matches, wallet_balance=wallet_balance, current_user=current_user)
 
 def update_previous_day_matches(current_user):
     yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
@@ -1140,12 +1088,25 @@ def get_player_stats():
         players=sorted(players_list),
         stat_type=stat_type
     )
+
 @app.route("/past_matches", methods=["GET"])
 def past_matches():
+    # Get distinct teams for filter dropdown
+    teams_list = list(db["past_matches"].distinct("Visitor/Neutral")) + \
+                 list(db["past_matches"].distinct("Home/Neutral"))
+    teams_list = sorted(list(set(teams_list)))  # Remove duplicates and sort
+
+    return render_template("past_matches.html",
+                           teams=teams_list)
+
+
+@app.route("/api/past_matches", methods=["GET"])
+def api_past_matches():
+
+    page = int(request.args.get("page", 1))  # Default to page 1
+    per_page = 10  # Items per page
     month = request.args.get("month", "").strip()
     team = request.args.get("team", "").strip()
-    page = int(request.args.get("page", 1))  # Default to page 1 if not provided
-    per_page = 10  # Number of matches per page
 
     query = {}
     if month:
@@ -1156,48 +1117,41 @@ def past_matches():
             {"Home/Neutral": {"$regex": team, "$options": "i"}}
         ]
 
-    # Get matches from past_matches collection
+    # Fetch and sort matches from the collection
     matches = list(db["past_matches"].find(query))
-    matches = [match for match in matches if match.get("Date") and match.get("Date").strip().lower() != "date"]
 
-    # Sort matches by date
+    # Filter out invalid dates and convert to datetime for sorting
     for match in matches:
         match["_id"] = str(match["_id"])
         try:
+            match["DateObj"] = datetime.strptime(match["Date"], "%Y-%m-%d")
+        except ValueError:
             try:
-                match["DateObj"] = datetime.strptime(match["Date"], "%Y-%m-%d")
+                match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
             except ValueError:
-                try:
-                    match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
-                except ValueError:
-                    match["DateObj"] = datetime.now()
-        except Exception as e:
-            print(f"Error parsing date: {e}")
-            match["DateObj"] = datetime.now()
-
+                match["DateObj"] = datetime.min  
+   
+    # Sort matches by DateObj in descending order
     sorted_matches = sorted(matches, key=lambda x: x["DateObj"], reverse=True)
 
-    # Remove temporary DateObj field
-    for match in sorted_matches:
+     # Pagination logic
+    total_matches = len(sorted_matches)
+    total_pages = (total_matches + per_page - 1) // per_page
+    matches = sorted_matches[(page - 1) * per_page: page * per_page]
+
+    # Remove temporary DateObj field before rendering
+    for match in matches:
         del match["DateObj"]
 
-    # Pagination logic
-    total_matches = len(sorted_matches)
-    total_pages = (total_matches + per_page - 1) // per_page  # Calculate total pages
-    start_index = (page - 1) * per_page
-    end_index = start_index + per_page
-    paginated_matches = sorted_matches[start_index:end_index]
-
-    # Get distinct teams for filter
-    teams_list = list(db["past_matches"].distinct("Visitor/Neutral")) + \
-                 list(db["past_matches"].distinct("Home/Neutral"))
-    teams_list = sorted(list(set(teams_list)))  # Remove duplicates and sort
+    for match in matches:
+        match["_id"] = str(match["_id"])
 
     return jsonify({
         "matches": matches,
         "current_page": page,
         "total_pages": total_pages
     })
+
 
 @app.route('/delete_user/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
