@@ -9,6 +9,11 @@ from datetime import datetime, time, timedelta
 from nba_api.live.nba.endpoints import scoreboard
 from bson.objectid import ObjectId  # Import ObjectId to handle MongoDB IDs
 from nba_api.live.nba.endpoints import boxscore
+import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import time
 import pandas as pd
 import joblib
 
@@ -284,6 +289,76 @@ def predict():
         "prob_visitor": prob_visitor* 100,
         "prob_home": prob_home* 100
     })
+
+
+otp_storage = {}
+def send_otp_email(user_email, otp):
+    sender_email = "testsenderse2024@gmail.com"  
+    sender_password = "sdew udqr hmho reps" 
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
+
+    subject = "OTP to reset your password"
+    body = f"OTP to reset password for your CourtMetrics account is: {otp}"
+
+    message = MIMEMultipart()
+    message['From'] = sender_email
+    message['To'] = user_email
+    message['Subject'] = subject
+    message.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, user_email, message.as_string())
+        server.quit()
+    except Exception as e:
+        print(f"Error sending OTP: {e}")
+
+
+@app.route('/send-otp', methods=['GET'])
+def send_otp():
+    user_email = request.args.get('email') 
+
+    if not user_email:
+        return jsonify({"error": "Email is required"}), 400
+
+    otp = random.randint(100000, 999999)
+    expiration_time = datetime.now() + timedelta(minutes=5)  
+
+    otp_storage[user_email] = {"otp": otp, "expires_at": expiration_time}
+
+    
+    send_otp_email(user_email, otp)
+    return jsonify({"message": f"OTP sent to {user_email}"}), 200
+
+
+@app.route('/verify-otp', methods=['GET'])
+def verify_otp():
+    user_email = request.args.get('email')
+    user_otp = request.args.get('otp')
+
+    if not user_email or not user_otp:
+        return jsonify({"error": "Email and OTP are required"}), 400
+
+    stored_data = otp_storage.get(user_email)
+
+    if not stored_data:
+        return jsonify({"error": "OTP not found for this email"}), 404
+
+    correct_otp = stored_data["otp"]
+    expiration_time = stored_data["expires_at"]
+
+    if datetime.now() > expiration_time:
+        return jsonify({"error": "OTP has expired"}), 400
+
+    if int(user_otp) == correct_otp:
+        del otp_storage[user_email] 
+        return jsonify({"message": "OTP verified successfully!"}), 200
+    else:
+        return jsonify({"error": "Invalid OTP"}), 400
+
 
 @app.route('/check_results')
 def check_results():
@@ -1016,6 +1091,18 @@ def get_player_stats():
 
 @app.route("/past_matches", methods=["GET"])
 def past_matches():
+    # Get distinct teams for filter dropdown
+    teams_list = list(db["past_matches"].distinct("Visitor/Neutral")) + \
+                 list(db["past_matches"].distinct("Home/Neutral"))
+    teams_list = sorted(list(set(teams_list)))  # Remove duplicates and sort
+
+    return render_template("past_matches.html",
+                           teams=teams_list)
+
+
+@app.route("/api/past_matches", methods=["GET"])
+def api_past_matches():
+
     page = int(request.args.get("page", 1))  # Default to page 1
     per_page = 10  # Items per page
     month = request.args.get("month", "").strip()
@@ -1042,34 +1129,28 @@ def past_matches():
             try:
                 match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
             except ValueError:
-                match["DateObj"] = datetime.min
-
+                match["DateObj"] = datetime.min  
+   
     # Sort matches by DateObj in descending order
     sorted_matches = sorted(matches, key=lambda x: x["DateObj"], reverse=True)
 
-    # Pagination logic
+     # Pagination logic
     total_matches = len(sorted_matches)
     total_pages = (total_matches + per_page - 1) // per_page
-    paginated_matches = sorted_matches[(page - 1) * per_page: page * per_page]
+    matches = sorted_matches[(page - 1) * per_page: page * per_page]
 
     # Remove temporary DateObj field before rendering
-    for match in paginated_matches:
+    for match in matches:
         del match["DateObj"]
 
-    # Get distinct teams for filter dropdown
-    teams_list = list(db["past_matches"].distinct("Visitor/Neutral")) + \
-                 list(db["past_matches"].distinct("Home/Neutral"))
-    teams_list = sorted(list(set(teams_list)))  # Remove duplicates and sort
+    for match in matches:
+        match["_id"] = str(match["_id"])
 
-    return render_template(
-        "past_matches.html",
-        matches=paginated_matches,
-        teams=teams_list,
-        selected_month=month,
-        selected_team=team,
-        current_page=page,
-        total_pages=total_pages
-    )
+    return jsonify({
+        "matches": matches,
+        "current_page": page,
+        "total_pages": total_pages
+    })
 
 
 @app.route('/delete_user/<user_id>', methods=['DELETE'])
