@@ -9,20 +9,55 @@
 <div id="wallet-section" style="display: none;">
     <h3>Your Wallet Balance: $<span id="wallet-balance"></span></h3>
     <div class="wallet-actions">
-        <form id="add-funds-form" onsubmit="addFunds(event)">
-            <input type="number" name="amount" placeholder="Enter amount to add" required>
+        <form id="add-funds-form" onsubmit="showAddFundsOptions(event)">
+            <input type="number" id="add-funds-amount" name="amount" placeholder="Enter amount to add" required>
             <button type="submit">Add Funds</button>
         </form>
-        <form id="withdraw-funds-form" onsubmit="withdrawFunds(event)">
-            <input type="number" name="amount" placeholder="Enter amount to withdraw" required>
-            <button type="submit">Withdraw Funds</button>
+        <form id="withdraw-funds-form" onsubmit="withdrawFunds(event)" style="margin-top: 10px;">
+            <input type="number" id="withdraw-funds-amount" name="amount" placeholder="Enter amount to withdraw" required>
+            <button type="submit" style="cursor: pointer;">Withdraw Funds</button>
         </form>
+        
     </div>
 </div>
+
+<div id="add-funds-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black;">
+    <h3>Select Payment Method</h3>
+    <button onclick="simulateAddFunds('credit_card')">Credit/Debit Card</button>
+    <button onclick="simulateAddFunds('apple_pay')">Apple Pay</button>
+    <button onclick="simulateAddFunds('paypal')">PayPal</button>
+    <button onclick="closeAddFundsPopup()">Cancel</button>
+</div>
+<div id="withdraw-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 1000;">
+    <p id="withdraw-popup-message"></p>
+    <button onclick="closeWithdrawPopup()">OK</button>
+</div>
+<!-- Confirmation Popup -->
+<div id="confirm-bid-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); z-index: 1000;">
+    <h3>Confirm Your Bid</h3>
+    <p id="confirm-bid-message"></p>
+    <button id="confirm-bid-yes">Yes</button>
+    <button onclick="closeConfirmBidPopup()">No</button>
+</div>
+
+<!-- Success Popup -->
+<div id="bid-success-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); z-index: 1000;">
+    <h3>Bid Successful</h3>
+    <p id="bid-success-message"></p>
+    <button onclick="closeBidSuccessPopup()">OK</button>
+</div>
+
+
 
 <div id="success-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black;">
     <p id="success-message"></p>
     <button onclick="closeSuccessPopup()">OK</button>
+</div>
+
+<div id="wallet-limit-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black;">
+    <h3>Wallet Limit Reached</h3>
+    <p>Your wallet balance cannot exceed $5000.</p>
+    <button onclick="closeWalletLimitPopup()">OK</button>
 </div>
 
 <h3>Ongoing Matches</h3>
@@ -38,18 +73,23 @@
         </div>
     </div>
     {% endfor %}
-  </div>
+</div>
+
+
+
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+ 
+    document.addEventListener("DOMContentLoaded", function () {
         const accessToken = localStorage.getItem('access_token');
         const userName = localStorage.getItem('user_name');
-        
+
         if (accessToken && userName) {
             document.getElementById('wallet-section').style.display = 'block';
             document.getElementById('user-name').textContent = userName;
 
-            fetch('/get_wallet_balance', {
+            // Fetch wallet balance and existing user bids
+            fetch('/get_user_bids', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`
@@ -59,95 +99,152 @@
             .then(data => {
                 if (data.wallet_balance !== undefined) {
                     document.getElementById('wallet-balance').textContent = data.wallet_balance;
-                    const bettingBoxes = document.querySelectorAll('.betting-box');
-
-                    bettingBoxes.forEach((box, index) => {
-                        const betAmount = parseInt(box.getAttribute('data-betting-amount'), 10); // Get betting_amount for the current match
-                        const homeTeam = box.getAttribute('data-home-team');
-                        const awayTeam = box.getAttribute('data-away-team');
-                        // Set up the HTML form dynamically for each box
-                        box.innerHTML = `
-                            <form class="bid-form">
-                                Select Team:<br> 
-                                <input type='radio' name='selected_team' value='${homeTeam}' required> ${homeTeam}<br> 
-                                <input type='radio' name='selected_team' value='${awayTeam}' required> ${awayTeam}<br> 
-                                Enter Bid Amount (Max $${betAmount}):<br> 
-                                <input type='number' name='bet_amount' min='1' max='${betAmount}' required><br> 
-                                <button type='submit'>Place Bid</button>
-                            </form>`;
-
-                        // Add an event listener to handle form submission
-                        const form = box.querySelector('.bid-form');
-                        form.addEventListener('submit', function(event) {
-                            event.preventDefault(); // Prevent default form submission
-                            placeBid(event, data.wallet_balance, form); // Call placeBid with relevant data
-                        });
-                    });
+                    setupBettingBoxes(data.wallet_balance, data.user_bids || []);
                 }
             })
             .catch(error => {
-                console.error("Error fetching wallet balance:", error);
+                console.error("Error fetching wallet balance or user bids:", error);
                 document.getElementById('wallet-balance').textContent = 'Error';
             });
         }
     });
 
-    // The placeBid function handles the actual submission
-    function placeBid(event, maxBalance, form) {
+    let pendingBidData = {}; // Temporarily store bid data
+
+    function setupBettingBoxes(walletBalance, userBids) {
+        const bettingBoxes = document.querySelectorAll('.betting-box');
+
+        bettingBoxes.forEach((box) => {
+            const matchId = box.getAttribute('data-match-id');
+            const homeTeam = box.getAttribute('data-home-team');
+            const awayTeam = box.getAttribute('data-away-team');
+            const betAmount = parseInt(box.getAttribute('data-betting-amount'), 10);
+
+            // Check if the user has already placed a bid for this match
+            const existingBid = userBids.find(bid => bid.match_id === matchId);
+
+            if (existingBid) {
+                box.innerHTML = `
+                    <p>You have already placed a bid on ${existingBid.selected_team} for this match. Amount: $${existingBid.bet_amount}</p>
+                `;
+            } else {
+                // Update betting box with form
+                box.innerHTML = `
+                    <form class="bid-form">
+                        Select Team:<br>
+                        <input type='radio' name='selected_team' value='${homeTeam}' required> ${homeTeam}<br>
+                        <input type='radio' name='selected_team' value='${awayTeam}' required> ${awayTeam}<br>
+                        Enter Bid Amount (Max $${betAmount}):<br>
+                        <input type='number' name='bet_amount' min='1' max='${betAmount}' required><br>
+                        <button type='submit'>Place Bid</button>
+                    </form>`;
+
+                const form = box.querySelector('.bid-form');
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+
+                    const selectedTeam = form.querySelector('input[name="selected_team"]:checked').value;
+                    const bidAmount = form.querySelector('input[name="bet_amount"]').value;
+
+                    if (!selectedTeam || !bidAmount) {
+                        alert("Please select a team and enter a valid bid amount.");
+                        return;
+                    }
+
+                    // Store bid data temporarily
+                    pendingBidData = { matchId, selectedTeam, bidAmount, walletBalance };
+
+                    // Show confirmation popup
+                    document.getElementById('confirm-bid-message').textContent =
+                        `Are you sure you want to place a bid of $${bidAmount} on ${selectedTeam}?`;
+                    document.getElementById('confirm-bid-popup').style.display = 'block';
+                });
+            }
+        });
+    }
+
+    function confirmPlaceBid() {
+        const { matchId, selectedTeam, bidAmount } = pendingBidData;
         const accessToken = localStorage.getItem('access_token');
-        const formData = new FormData(form); // Collect form data
+
+        const formData = new FormData();
+        formData.append('match_id', matchId);
+        formData.append('selected_team', selectedTeam);
+        formData.append('bet_amount', bidAmount);
 
         fetch('/place_bid', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`
             },
-            body: new URLSearchParams(formData) // Send form data as URL-encoded
+            body: new URLSearchParams(formData)
         })
         .then(response => response.json())
         .then(data => {
-            if (data.message) {
-                showSuccessPopup(data.message); // Show success message
+            if (data.success) {
+                document.getElementById('bid-success-message').textContent = data.message;
+                document.getElementById('bid-success-popup').style.display = 'block';
             } else {
-                showErrorPopup('An error occurred while placing the bid.');
+                alert(data.message || 'Failed to place bid'); // Show error
             }
         })
         .catch(error => {
             console.error("Error placing bid:", error);
-            showErrorPopup('An error occurred while placing bid.');
+            alert('An unexpected error occurred while placing the bid. Please try again.');
         });
+
+        closeConfirmBidPopup();
     }
 
-    function addFunds(event) {
+    function closeConfirmBidPopup() {
+        document.getElementById('confirm-bid-popup').style.display = 'none';
+    }
+
+    function closeBidSuccessPopup() {
+        document.getElementById('bid-success-popup').style.display = 'none';
+        location.reload();
+    }
+
+    document.getElementById('confirm-bid-yes').addEventListener('click', confirmPlaceBid);
+
+
+
+
+    function showAddFundsOptions(event) {
         event.preventDefault();
 
-        const accessToken = localStorage.getItem('access_token');
-        const amount = document.querySelector('input[name="amount"]').value;
+        const amount = parseInt(document.getElementById('add-funds-amount').value);
+        const currentBalance = parseInt(document.getElementById('wallet-balance').textContent);
 
-        fetch('/add_funds', {
+        if (currentBalance + amount > 5000) {
+            document.getElementById('wallet-limit-popup').style.display = 'block';
+            return;
+        }
+
+        document.getElementById('add-funds-popup').style.display = 'block';
+    }
+
+    function simulateAddFunds(method) {
+        const amount = parseInt(document.getElementById('add-funds-amount').value);
+        const accessToken = localStorage.getItem('access_token');
+
+        fetch('/add_funds_dummy', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`
             },
-            body: `amount=${encodeURIComponent(amount)}`
+            body: JSON.stringify({ method, amount })
         })
         .then(response => response.json())
         .then(data => {
-            if (data.message) {
-                fetch('/get_wallet_balance', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                })
-                .then(response => response.json())
-                .then(balanceData => {
-                    document.getElementById('wallet-balance').textContent = balanceData.wallet_balance;
-                });
-                showSuccessPopup(data.message);
+            if (data.success) {
+                document.getElementById('wallet-balance').textContent = data.wallet_balance;
+                document.getElementById('success-message').textContent = data.message;
+                document.getElementById('success-popup').style.display = 'block';
+                closeAddFundsPopup();
             } else {
-                alert('An error occurred while adding funds.');
+                alert(data.message);
             }
         })
         .catch(error => {
@@ -156,54 +253,78 @@
         });
     }
 
+
     function withdrawFunds(event) {
-        event.preventDefault();
+    event.preventDefault();
 
-        const accessToken = localStorage.getItem('access_token');
-        const amount = document.querySelector('#withdraw-funds-form input[name="amount"]').value;
-        const currentBalance = parseFloat(document.getElementById('wallet-balance').textContent);
+    const accessToken = localStorage.getItem('access_token');
+    const amount = parseFloat(document.querySelector('#withdraw-funds-form input[name="amount"]').value);
 
-        if (parseFloat(amount) > currentBalance) {
-            showErrorPopup('Insufficient funds for withdrawal');
-            return;
+    if (isNaN(amount) || amount <= 0) {
+        showWithdrawPopup('Please enter a valid withdrawal amount.');
+        return;
+    }
+
+    const formData = new URLSearchParams();
+    formData.append('amount', amount); // Append amount as form data
+
+    fetch('/withdraw_funds', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/x-www-form-urlencoded' // Set form data content type
+        },
+        body: formData.toString() // Convert form data to string format
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('wallet-balance').textContent = data.wallet_balance;
+            showWithdrawPopup(data.message); // Show success message
+        } else {
+            showWithdrawPopup(data.message); // Show error message
         }
+    })
+    .catch(error => {
+        console.error('Error withdrawing funds:', error);
+        showWithdrawPopup('An error occurred while withdrawing funds.');
+    });
+}
 
-        fetch('/withdraw_funds', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': `Bearer ${accessToken}`
-            },
-            body: `amount=${encodeURIComponent(amount)}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('wallet-balance').textContent = data.wallet_balance;
-                showSuccessPopup(data.message);
-            } else {
-                showErrorPopup(data.message);
-            }
-        })
-        .catch(error => {
-            console.error("Error withdrawing funds:", error);
-            showErrorPopup('An error occurred while withdrawing funds.');
-        });
+
+// Show Withdraw Popup
+function showWithdrawPopup(message) {
+    document.getElementById('withdraw-popup-message').textContent = message;
+    document.getElementById('withdraw-popup').style.display = 'block';
+}
+
+// Close Withdraw Popup
+function closeWithdrawPopup() {
+    document.getElementById('withdraw-popup').style.display = 'none';
+    window.location.reload(); // Reload to reflect updated wallet balance
+}
+
+
+
+
+    function closeSuccessPopup() {
+        document.getElementById('success-popup').style.display = 'none';
+        window.location.reload(); // Reload to reflect updated wallet balance
     }
 
-    function showSuccessPopup(message) {
-        document.getElementById('success-message').textContent = message;
-        document.getElementById('success-popup').style.display = 'block';
-    }
 
-    function showErrorPopup(message) {
-        document.getElementById('success-message').textContent = message;
-        document.getElementById('success-popup').style.display = 'block';
+
+    function closeAddFundsPopup() {
+        document.getElementById('add-funds-popup').style.display = 'none';
     }
 
     function closeSuccessPopup() {
         document.getElementById('success-popup').style.display = 'none';
         window.location.reload();
+    }
+
+    function closeWalletLimitPopup() {
+        document.getElementById('wallet-limit-popup').style.display = 'none';
     }
 </script>
 
