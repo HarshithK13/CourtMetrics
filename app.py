@@ -89,8 +89,14 @@ def place_bid():
     selected_team = request.form.get('selected_team')
     bet_amount = int(request.form.get('bet_amount'))
 
+    # Fetch user data from the database
     user_data = users_collection.find_one({"username": current_user})
     wallet_balance = user_data.get("wallet_balance", 1000)
+
+    # Check if the user has already placed a bet for the match
+    existing_bet = next((bid for bid in placed_bids if bid['match_id'] == match_id and bid['user'] == current_user), None)
+    if existing_bet:
+        return jsonify({'success': False, 'message': 'You have already placed a bet for this match!'})
 
     if bet_amount > wallet_balance:
         return jsonify({'success': False, 'message': 'Insufficient funds!'})
@@ -125,48 +131,122 @@ def place_bid():
 
     return jsonify({'success': True, 'message': f'Bid placed successfully! Remaining balance: ${new_balance}'})
 
-def get_match_prediction(home_team, away_team):
-    team_mapping = {
-        "Celtics": "Boston Celtics",
-        "Nets": "Brooklyn Nets",
-        "Knicks": "New York Knicks",
-        # Add all other team mappings here...
+
+wallet_balance = 100
+@app.route('/add_funds_dummy', methods=['POST'])
+@jwt_required()
+def add_funds_dummy():
+    current_user = get_jwt_identity()
+    data = request.json
+    method = data.get('method')
+    amount_to_add = data.get('amount')
+
+    if not method or not amount_to_add or not isinstance(amount_to_add, int) or amount_to_add <= 0:
+        return jsonify({'success': False, 'message': 'Invalid input'}), 400
+
+    # Fetch the user's wallet balance from MongoDB
+    user_data = users_collection.find_one({"username": current_user})
+    if not user_data:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+    
+    current_balance = user_data.get("wallet_balance", 0)
+
+    if current_balance + amount_to_add > 5000:
+        return jsonify({'success': False, 'message': 'Maximum wallet balance of $5000 reached.'}), 400
+
+    # Simulate adding funds
+    new_balance = user_data.get("wallet_balance", 1000) + amount_to_add
+    users_collection.update_one({"username": current_user}, {"$set": {"wallet_balance": new_balance}})
+
+    # Record the dummy transaction in the payment history
+    payment_record = {
+        "username": current_user,
+        "amount": amount_to_add,
+        "date": datetime.now(),
+        "balance_after_transaction": new_balance,
+        "transaction_type": f"add_funds_{method}"  # e.g., add_funds_credit_card
     }
-    # Verify if model file exists
-    model_path = 'random_forest_model.joblib'
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found at {model_path}")
+    payment_history_collection.insert_one(payment_record)
 
-    try:
-        # Load the pre-trained model and encoders
-        model = joblib.load(model_path)
-        label_encoder_visitor = joblib.load('label_encoder_visitor.joblib')
-        label_encoder_home = joblib.load('label_encoder_home.joblib')
-        label_encoder_won = joblib.load('label_encoder_won.joblib')
-    except ValueError as e:
-        raise RuntimeError(
-            f"Failed to load model or encoders due to compatibility issues: {e}. "
-            "Ensure scikit-learn and joblib versions match those used during saving."
-        )
+    return jsonify({
+        'success': True,
+        'message': f"Funds added successfully via {method}! New balance: ${new_balance}",
+        'wallet_balance': new_balance
+    }), 200
 
 
+
+@app.route('/get_user_bids', methods=['GET'])
+@jwt_required()
+def get_user_bids():
+    current_user = get_jwt_identity()
+    user_bids = [bid for bid in placed_bids if bid['user'] == current_user]
+    user_data = users_collection.find_one({"username": current_user})
+    wallet_balance = user_data.get("wallet_balance", 1000)
+    return jsonify({'user_bids': user_bids, 'wallet_balance': wallet_balance})
+
+
+
+def predict(home_team,away_team):
+    # print('predicting')
+    # home_team = request.args.get('home_team')
+    # away_team = request.args.get('away_team')
+
+    team_mapping = {"Celtics": "Boston Celtics",
+                    "Nets": "Brooklyn Nets",
+                    "Knicks": "New York Knicks",
+                    "76ers": "Philadelphia 76ers",
+                    "Raptors": "Toronto Raptors",
+                    "Bulls": "Chicago Bulls",
+                    "Cavaliers": "Cleveland Cavaliers",
+                    "Pistons": "Detroit Pistons",
+                    "Pacers": "Indiana Pacers",
+                    "Bucks": "Milwaukee Bucks",
+                    "Hawks": "Atlanta Hawks",
+                    "Hornets": "Charlotte Hornets",
+                    "Heat": "Miami Heat",
+                    "Magic": "Orlando Magic",
+                    "Wizards": "Washington Wizards",
+                    "Nuggets": "Denver Nuggets",
+                    "Timberwolves": "Minnesota Timberwolves",
+                    "Thunder": "Oklahoma City Thunder",
+                    "Trail Blazers": "Portland Trail Blazers",
+                    "Jazz": "Utah Jazz",
+                    "Warriors": "Golden State Warriors",
+                    "Clippers": "Los Angeles Clippers",
+                    "Lakers": "Los Angeles Lakers",
+                    "Suns": "Phoenix Suns",
+                    "Kings": "Sacramento Kings",
+                    "Mavericks": "Dallas Mavericks",
+                    "Rockets": "Houston Rockets",
+                    "Grizzlies": "Memphis Grizzlies",
+                    "Pelicans": "New Orleans Pelicans",
+                    "Spurs": "San Antonio Spurs"}
+
+    model = joblib.load('random_forest_model.joblib')
+    label_encoder_visitor = joblib.load('label_encoder_visitor.joblib')
+    label_encoder_home = joblib.load('label_encoder_home.joblib')
+    label_encoder_won = joblib.load('label_encoder_won.joblib')
+    print('---------------------------')
+    print(away_team)
     future_match = pd.DataFrame({
         "Visitor/Neutral_encoded": label_encoder_visitor.transform([team_mapping[away_team]]),
         "Home/Neutral_encoded": label_encoder_home.transform([team_mapping[home_team]])
     })
 
     future_pred = model.predict(future_match)
-    predicted_winner = label_encoder_won.inverse_transform(future_pred)[0]
+    predicted_winner = label_encoder_won.inverse_transform(future_pred)
     future_pred_proba = model.predict_proba(future_match)
 
-    prob_visitor = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[away_team]])[0]][0] * 100
-    prob_home = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[home_team]])[0]][0] * 100
+    prob_visitor = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[away_team]])[0]][0]
+    prob_home = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[home_team]])[0]][0]
 
-    return predicted_winner, prob_home, prob_visitor
+    return predicted_winner[0], prob_visitor* 100, prob_home* 100
 
 
 @app.route('/available_bids', methods=['GET'])
 @jwt_required(optional=True)
+    
 def available_bids():
     current_user = get_jwt_identity()
     wallet_balance = None
@@ -189,11 +269,14 @@ def available_bids():
         for game in games_dict['scoreboard']['games']:
             home_team = game['homeTeam']['teamName']
             away_team = game['awayTeam']['teamName']
+            print('==========================================')
+            print(home_team)
+            print(away_team)
             home_score = game['homeTeam']['score']
             away_score = game['awayTeam']['score']
 
             # Fetch prediction for the match
-            predicted_winner, prob_home, prob_visitor = get_match_prediction(home_team, away_team)
+            predicted_winner, prob_home, prob_visitor = predict(home_team, away_team)
 
             ongoing_matches.append({
                 'match_id': f"{home_team}_vs_{away_team}",
@@ -213,6 +296,7 @@ def available_bids():
         wallet_balance=wallet_balance,
         current_user=current_user
     )
+
 
 def update_previous_day_matches(current_user):
     yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
@@ -282,65 +366,6 @@ def get_final_score(game_id):
         print(f"Error fetching score for game {game_id}: {str(e)}")
         return None
 
-
-@app.route('/predict', methods=['GET'])
-def predict():
-    home_team = request.args.get('home_team')
-    away_team = request.args.get('away_team')
-
-    team_mapping = {"Celtics": "Boston Celtics",
-                    "Nets": "Brooklyn Nets",
-                    "Knicks": "New York Knicks",
-                    "76ers": "Philadelphia 76ers",
-                    "Raptors": "Toronto Raptors",
-                    "Bulls": "Chicago Bulls",
-                    "Cavaliers": "Cleveland Cavaliers",
-                    "Pistons": "Detroit Pistons",
-                    "Pacers": "Indiana Pacers",
-                    "Bucks": "Milwaukee Bucks",
-                    "Hawks": "Atlanta Hawks",
-                    "Hornets": "Charlotte Hornets",
-                    "Heat": "Miami Heat",
-                    "Magic": "Orlando Magic",
-                    "Wizards": "Washington Wizards",
-                    "Nuggets": "Denver Nuggets",
-                    "Timberwolves": "Minnesota Timberwolves",
-                    "Thunder": "Oklahoma City Thunder",
-                    "Trail Blazers": "Portland Trail Blazers",
-                    "Jazz": "Utah Jazz",
-                    "Warriors": "Golden State Warriors",
-                    "Clippers": "Los Angeles Clippers",
-                    "Lakers": "Los Angeles Lakers",
-                    "Suns": "Phoenix Suns",
-                    "Kings": "Sacramento Kings",
-                    "Mavericks": "Dallas Mavericks",
-                    "Rockets": "Houston Rockets",
-                    "Grizzlies": "Memphis Grizzlies",
-                    "Pelicans": "New Orleans Pelicans",
-                    "Spurs": "San Antonio Spurs"}
-
-    model = joblib.load('random_forest_model.joblib')
-    label_encoder_visitor = joblib.load('label_encoder_visitor.joblib')
-    label_encoder_home = joblib.load('label_encoder_home.joblib')
-    label_encoder_won = joblib.load('label_encoder_won.joblib')
-
-    future_match = pd.DataFrame({
-        "Visitor/Neutral_encoded": label_encoder_visitor.transform([team_mapping[away_team]]),
-        "Home/Neutral_encoded": label_encoder_home.transform([team_mapping[home_team]])
-    })
-
-    future_pred = model.predict(future_match)
-    predicted_winner = label_encoder_won.inverse_transform(future_pred)
-    future_pred_proba = model.predict_proba(future_match)
-
-    prob_visitor = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[away_team]])[0]][0]
-    prob_home = future_pred_proba[0][model.classes_ == label_encoder_won.transform([team_mapping[home_team]])[0]][0]
-
-    return jsonify({
-        "predicted_winner": predicted_winner[0],
-        "prob_visitor": prob_visitor* 100,
-        "prob_home": prob_home* 100
-    })
 
 
 otp_storage = {}

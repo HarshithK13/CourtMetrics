@@ -8,16 +8,10 @@
 
 <div id="wallet-section" style="display: none;">
     <h3>Your Wallet Balance: $<span id="wallet-balance"></span></h3>
-    <div class="wallet-actions">
-        <form id="add-funds-form" onsubmit="addFunds(event)">
-            <input type="number" name="amount" placeholder="Enter amount to add" required>
-            <button type="submit">Add Funds</button>
-        </form>
-        <form id="withdraw-funds-form" onsubmit="withdrawFunds(event)">
-            <input type="number" name="amount" placeholder="Enter amount to withdraw" required>
-            <button type="submit">Withdraw Funds</button>
-        </form>
-    </div>
+    <form id="add-funds-form" onsubmit="addFunds(event)">
+        <input type="number" name="amount" placeholder="Enter amount to add" required>
+        <button type="submit">Add Funds</button>
+    </form>
 </div>
 
 <div id="success-popup" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid black;">
@@ -38,7 +32,7 @@
         </div>
     </div>
     {% endfor %}
-  </div>
+</div>
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -153,41 +147,6 @@
         .catch(error => {
             console.error("Error adding funds:", error);
             alert('An error occurred while adding funds.');
-        });
-    }
-
-    function withdrawFunds(event) {
-        event.preventDefault();
-
-        const accessToken = localStorage.getItem('access_token');
-        const amount = document.querySelector('#withdraw-funds-form input[name="amount"]').value;
-        const currentBalance = parseFloat(document.getElementById('wallet-balance').textContent);
-
-        if (parseFloat(amount) > currentBalance) {
-            showErrorPopup('Insufficient funds for withdrawal');
-            return;
-        }
-
-        fetch('/withdraw_funds', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': `Bearer ${accessToken}`
-            },
-            body: `amount=${encodeURIComponent(amount)}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('wallet-balance').textContent = data.wallet_balance;
-                showSuccessPopup(data.message);
-            } else {
-                showErrorPopup(data.message);
-            }
-        })
-        .catch(error => {
-            console.error("Error withdrawing funds:", error);
-            showErrorPopup('An error occurred while withdrawing funds.');
         });
     }
 
