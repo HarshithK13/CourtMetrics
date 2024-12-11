@@ -1,0 +1,328 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-image: url('../images/background.jpg'); /* Background image */
+    background-size: cover; /* Cover the entire page */
+    background-position: center; /* Center the background image */
+    background-attachment: fixed; /* Make it fixed when scrolling */
+    position: relative; /* Ensure the body is positioned relative to apply overlay */
+}
+
+/* Semi-transparent overlay */
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7); /* White overlay with 30% transparency */
+    z-index: -1; /* Ensure it stays behind all content */
+}
+
+/* Navigation Bar */
+.navbar {
+    width: 100%;
+    padding: 10px 20px;
+    background-color: #ff6600; /* Orange background */
+    display: flex;
+    justify-content: space-between; /* Space between logo and links */
+    align-items: center;
+}
+
+/* Align the logo and app name in the navbar */
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Adjust spacing between logo and app name */
+}
+
+/* Logo styling */
+.logo {
+    width: 50px; /* Adjust size as needed */
+    height: auto;
+}
+
+/* App name styling */
+.appname {
+    font-size: 30 px; /* Increase font size */
+    font-weight: bold; /* Make font bold */
+    font-family: 'Tahoma', sans-serif;
+    color: white; /* Set color to make it stand out */
+}
+
+.nav-links {
+    display: flex;
+    padding: 10px 20px;
+    margin-left: 10px;
+    font-size: 20px;
+}
+
+.nav-button {
+    color: white;
+    background-color: transparent;
+    padding: 10px 20px;
+    margin-left: 10px;
+    text-decoration: none;
+    font-size: 16px;
+    border: 1px solid white; /* Add a border for better visibility */
+    transition: all 0.5s ease; /* Smooth transition */
+}
+
+
+.nav-button:hover {
+    cursor: pointer;
+    background-color: white; /* Change background on hover */
+    color: black; /* Change text color on hover */
+    box-shadow: 0 0 5px white, 0 0 10px white, 0 0 15px white; /* Shadow effect */
+    font-weight: bold; /* Make text bold on hover */
+}
+
+.cancel-button {
+   margin-top: 10px;
+   padding: 10px 20px;
+   background-color: #ccc;
+   color: #333;
+   border: none;
+   border-radius: 4px;
+   cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+/* Login and Signup Buttons */
+.nav-login-signup .login-btn {
+    background-color: #007bff; /* Blue background for login button */
+    color: white;
+}
+
+.nav-login-signup .signup-btn {
+    background-color: #28a745; /* Green background for signup button */
+    color: white;
+}
+
+.nav-login-signup .login-btn:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+.nav-login-signup .signup-btn:hover {
+    background-color: #218838; /* Darker green on hover */
+}
+
+.logout-btn {
+    background-color: #007bff; /* blue background for logout button */
+    color: white;
+}
+
+.logout-btn:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+.user-greeting-container {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Adds space between greeting text and the button */
+}
+
+.user-greeting-container p {
+    margin: 0; /* Remove any default margin */
+    font-size: 1rem; /* Adjust font size if necessary */
+}
+
+/* Scoreboard Section (Scrollable) */
+.scoreboard-container {
+    margin-top: 30px;
+    overflow-x: auto; /* Enable horizontal scrolling if content overflows */
+}
+
+.scoreboard {
+    display: flex; 
+}
+
+/* Match Box Styling */
+.match-box {
+    background-color: #f8e5b2; /* Light yellow background for score blocks */
+    padding: 20px;
+
+    width: 300px; /* Fixed width for each match box */
+    height: 150px; /* Fixed height for consistency */
+
+    display: flex;
+    justify-content: space-between; /* Align team names left and scores right */
+
+    flex-shrink: 0; /* Prevent shrinking of match boxes */
+
+    margin-right: 20px; /* Add space between match boxes */
+}
+
+.match-details {
+   display: flex;
+   flex-direction: column; /* Stack team names vertically on the left side */
+   justify-content: space-between; 
+}
+
+.match-scores {
+   display: flex;
+   flex-direction: column; /* Stack scores vertically on the right side */
+   justify-content: space-between; 
+}
+
+/* Earning History and Summary Section (Aligned Left) */
+.left-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Align content to the left side of the page */
+}
+
+.earning-history,
+.match-summary {
+    margin-top: 50px;
+}
+
+.earning-history h2,
+.match-summary h2 {
+    font-size: 1.8em;
+}
+
+/* Center the form container */
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    text-align: center;
+}
+
+/* Form heading */
+.login-container h2 {
+    font-size: 1.8em;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+/* Message styling */
+.message {
+    color: #d9534f; /* Red color for error message */
+    margin-bottom: 1rem;
+}
+
+/* Label styling */
+.login-form label {
+    font-size: 1rem;
+    color: #555;
+    display: block;
+    text-align: left;
+    margin-bottom: 0.5rem;
+}
+
+/* Input styling */
+.form-input {
+    width: 100%;
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+.form-input:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+/* Button group styling */
+.button-group {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+}
+
+/* Submit button styling */
+.submit-button {
+    background-color: #007bff;
+    color: #fff;
+    padding: 0.8rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+    background-color: #0056b3;
+}
+
+
+/* Center the form container */
+.signup-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    text-align: center;
+}
+
+/* Form heading */
+.signup-container h2 {
+    font-size: 1.8em;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+/* Message styling */
+.message {
+    color: #d9534f; /* Red color for error message */
+    margin-bottom: 1rem;
+}
+
+/* Label styling */
+.signup-form label {
+    font-size: 1rem;
+    color: #555;
+    display: block;
+    text-align: left;
+    margin-bottom: 0.5rem;
+}
+
+/* Button group styling */
+.button-group {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+}
+
+/* Cancel button styling */
+.cancel-button {
+    background-color: #ddd;
+    color: #333;
+    padding: 0.8rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+.cancel-button:hover {
+    background-color: #bbb;
+}
+
+/* Footer (Optional) */
+.footer {
+    margin-top: auto; /* Push footer to bottom */
+}
