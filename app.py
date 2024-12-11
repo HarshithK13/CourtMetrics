@@ -757,19 +757,30 @@ def get_upcoming_matches():
             response = requests.get("http://127.0.0.1:4235/get_matches", params={"team":team})
             response.raise_for_status()  # Raise an error for bad status codes
             matches = response.json()  # Parse JSON response
-            return jsonify(matches)  # Send data to frontend
+            today = datetime.today().date()  # Get today's date
+            upcoming_matches = [
+                match for match in matches 
+                if 'Date' in match and datetime.strptime(match['Date'], '%a, %b %d, %Y').date() >= today
+            ]
+            return jsonify(upcoming_matches)  # Send data to frontend
         except requests.RequestException as e:
             print(f"Error fetching matches: {e}") 
-            return jsonify([])  # Return an empty list on error
+            return jsonify([])  # Return an empty list on error
     else:
         try:
-            response = requests.get("http://127.0.0.1:4235/get_matches", params={"month": month,"team":team})
+            response = requests.get("http://127.0.0.1:4235/get_matches", params={"month": month, "team": team})
             response.raise_for_status()  # Raise an error for bad status codes
             matches = response.json()  # Parse JSON response
-            return jsonify(matches)  # Send data to frontend
+            # Filter upcoming matches from today
+            today = datetime.today().date()  # Get today's date
+            upcoming_matches = [
+                match for match in matches 
+                if 'Date' in match and datetime.strptime(match['Date'], '%a, %b %d, %Y').date() >= today
+            ]
+            return jsonify(upcoming_matches)  # Send filtered data to the frontend
         except requests.RequestException as e:
-            print(f"Error fetching matches: {e}") 
-            return jsonify([])  # Return an empty list on error
+            print(f"Error fetching matches: {e}")
+            return jsonify([])  # Return an empty list on error
         
 
 
