@@ -16,16 +16,16 @@
     <h3>User Management</h3>
     <table class="user-table">
         <tr>
+            <th>Email ID</th>
             <th>Username</th>
-            <th>Name</th>
             <th>Mobile</th>
             <th>Address</th>
             <th>Actions</th>
         </tr>
         {% for user in users %}
         <tr id="user-{{ user._id }}">
+            <td>{{ user.email }}</td>
             <td>{{ user.username }}</td>
-            <td>{{ user.Name }}</td>
             <td>{{ user.Mobile }}</td>
             <td>{{ user.Address }}</td>
             <td>
