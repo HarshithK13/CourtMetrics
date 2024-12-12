@@ -365,52 +365,6 @@ def get_final_score(game_id):
         print(f"Error fetching score for game {game_id}: {str(e)}")
         return None
 
-@app.route('/forgot_password', methods=['GET', 'POST'])
-def forgot_password():
-    if request.method == 'POST':
-        user_email = request.form.get('email')
-        if not user_email:
-            return jsonify({"error": "Email is required"}), 400
-        
-        # Send OTP
-        otp = random.randint(100000, 999999)
-        expiration_time = datetime.now() + timedelta(minutes=5)
-        otp_storage[user_email] = {"otp": otp, "expires_at": expiration_time}
-        send_otp_email(user_email, otp)
-        
-        return jsonify({"message": f"OTP sent to {user_email}"}), 200
-    
-    return render_template('forgot_password.html')
-
-@app.route('/reset_password', methods=['POST'])
-def reset_password():
-    user_email = request.form.get('email')
-    user_otp = request.form.get('otp')
-    new_password = request.form.get('new_password')
-
-    if not user_email or not user_otp or not new_password:
-        return jsonify({"error": "Email, OTP, and new password are required"}), 400
-
-    stored_data = otp_storage.get(user_email)
-
-    if not stored_data:
-        return jsonify({"error": "OTP not found for this email"}), 404
-
-    correct_otp = stored_data["otp"]
-    expiration_time = stored_data["expires_at"]
-
-    if datetime.now() > expiration_time:
-        return jsonify({"error": "OTP has expired"}), 400
-
-    if int(user_otp) == correct_otp:
-        # Update user's password in the database
-        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        users_collection.update_one({'username': user_email}, {'$set': {'password': hashed_password}})
-        
-        del otp_storage[user_email]
-        return jsonify({"message": "Password reset successful!"}), 200
-    else:
-        return jsonify({"error": "Invalid OTP"}), 400
 
 
 otp_storage = {}
@@ -439,28 +393,21 @@ def send_otp_email(user_email, otp):
         print(f"Error sending OTP: {e}")
 
 
-@app.route('/send-otp', methods=['POST'])
+@app.route('/send-otp', methods=['GET'])
 def send_otp():
-    username = request.form.get('username')
-    user_email = request.form.get('email')
+    user_email = request.args.get('email') 
 
-    if not username or not user_email:
-        return jsonify({"error": "Username and email are required"}), 400
-
-    # Check if user exists in database
-    user = users_collection.find_one({'username': username, 'email': user_email})
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    if not user_email:
+        return jsonify({"error": "Email is required"}), 400
 
     otp = random.randint(100000, 999999)
-    expiration_time = datetime.now() + timedelta(minutes=5)
+    expiration_time = datetime.now() + timedelta(minutes=5)  
 
     otp_storage[user_email] = {"otp": otp, "expires_at": expiration_time}
 
+    
     send_otp_email(user_email, otp)
     return jsonify({"message": f"OTP sent to {user_email}"}), 200
-
-
 
 
 @app.route('/verify-otp', methods=['GET'])
