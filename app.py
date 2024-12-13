@@ -1226,7 +1226,6 @@ def api_past_matches():
 
     # Retrieve matches with pagination
     matches = list(db["past_matches"].find(query)
-                   .sort("Date", -1)  # Sort by Date in descending order
                    .skip((page - 1) * per_page)
                    .limit(per_page))
 
