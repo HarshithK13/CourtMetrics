@@ -3,6 +3,43 @@
 {% block title %}Admin Home{% endblock %}
 
 {% block content %}
+
+<style>
+    #mainContent.hidden {
+        display: none; /* Completely hides the main content */
+    }
+    .popup {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    .popup-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .popup-content button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .popup-content button:hover {
+        background-color: #0056b3;
+    }
+</style>
+<div id="mainContent">
 <div class="admin-home-container">
     <h2>Admin Dashboard</h2>
     
@@ -29,6 +66,15 @@
         {% endfor %}
     </table>
 </div>
+</div>
+
+<div id="loginPopup" class="popup" style="display: none;">
+    <div class="popup-content">
+        <p>You are not logged in as admin. Redirecting to the admin login page...</p>
+        <button onclick="redirectToLogin()">OK</button>
+    </div>
+</div>
+
 
 <script>
     // Function to delete a user
@@ -58,16 +104,23 @@
             });
         }
     }
+    function redirectToLogin() {
+        window.location.href = "/admin_login"; // Redirect to the admin login page
+    }
 
     // Check if the admin is logged in
     document.addEventListener("DOMContentLoaded", function () {
-        const accessToken = localStorage.getItem('access_token');
+        const accessToken = localStorage.getItem('admin_access_token');
         const userName = localStorage.getItem('user_name');
 
         if (!accessToken || !userName) {
-            alert("You are not logged in as admin. Redirecting to admin login page...");
-            window.location.href = "/admin_login";  // Redirect to the admin login page
+            // alert("You are not logged in as admin. Redirecting to admin login page...");
+            // window.location.href = "/admin_login";  // Redirect to the admin login page
+            const loginPopup = document.getElementById("loginPopup");
+            loginPopup.style.display = "flex"; // Show the popup
+            mainContent.classList.add("hidden");
         }
     });
 </script>
 {% endblock %}
+
