@@ -7,7 +7,7 @@
 
 <script type="text/babel">
     const AdminLogin = () => {
-        const [username, setUsername] = React.useState('');
+        const [email, setUsername] = React.useState('');
         const [password, setPassword] = React.useState('');
         const [message, setMessage] = React.useState('');
 
@@ -20,14 +20,14 @@
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: new URLSearchParams({ username, password })
+                body: new URLSearchParams({ email, password })
             });
 
             const data = await response.json();
             if (response.ok) {
                 setMessage("Admin login successful!");
-                localStorage.setItem('access_token', data.access_token);
-                localStorage.setItem('user_name', data.name);
+                localStorage.setItem('admin_access_token', data.admin_access_token);
+                localStorage.setItem('user_name', data.username);
                 window.location.href = '/admin_home';
             } else {
                 setMessage(data.message || "Invalid admin credentials");
@@ -39,11 +39,11 @@
                 <h2>Admin Login</h2>
                 {message && <p className="message">{message}</p>}
                 <form onSubmit={handleAdminLogin} className="login-form">
-                    <label htmlFor="username">Username:</label>
+                    <label htmlFor="username">Email ID:</label>
                     <input
                         type="text"
-                        id="username"
-                        value={username}
+                        id="email"
+                        value={email}
                         onChange={(e) => setUsername(e.target.value)}
                         required
                         className="form-input"

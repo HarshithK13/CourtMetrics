@@ -246,7 +246,6 @@ def predict(home_team,away_team):
 
 @app.route('/available_bids', methods=['GET'])
 @jwt_required(optional=True)
-    
 def available_bids():
     current_user = get_jwt_identity()
     wallet_balance = None
@@ -435,6 +434,32 @@ def verify_otp():
         return jsonify({"message": "OTP verified successfully!"}), 200
     else:
         return jsonify({"error": "Invalid OTP"}), 400
+    
+
+@app.route('/forgot_password', methods=['GET'])
+def forgot_password():
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password', methods=['POST'])
+def reset_password():
+    data = request.json
+    email = data.get('email')
+    new_password = data.get('newPassword')
+
+    if not email or not new_password or len(new_password) < 12:
+        return jsonify({"message": "Invalid input or password too short"}), 400
+
+    # Find user in the database
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    # Hash the new password
+    hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    # Update password in the database
+    users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
+    return jsonify({"message": "Password reset successful"}), 200
 
 
 @app.route('/check_results')
@@ -555,7 +580,7 @@ def admin_login():
 
         if admin and bcrypt.checkpw(password.encode('utf-8'), admin['password'].encode('utf-8')):
             access_token = create_access_token(identity=email)
-            return jsonify({"access_token": access_token, "name": admin["Name"]}), 200
+            return jsonify({"admin_access_token": access_token, "username": admin["username"]}), 200
         else:
             return jsonify({"message": "Invalid admin credentials"}), 401
 
@@ -1202,31 +1227,15 @@ def api_past_matches():
             {"Home/Neutral": {"$regex": team, "$options": "i"}}
         ]
 
-    # Fetch and sort matches from the collection
-    matches = list(db["past_matches"].find(query))
-
-    # Filter out invalid dates and convert to datetime for sorting
-    for match in matches:
-        match["_id"] = str(match["_id"])
-        try:
-            match["DateObj"] = datetime.strptime(match["Date"], "%Y-%m-%d")
-        except ValueError:
-            try:
-                match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
-            except ValueError:
-                match["DateObj"] = datetime.min  
-   
-    # Sort matches by DateObj in descending order
-    sorted_matches = sorted(matches, key=lambda x: x["DateObj"], reverse=True)
-
-     # Pagination logic
-    total_matches = len(sorted_matches)
+    # Count total documents
+    total_matches = db["past_matches"].count_documents(query)
     total_pages = (total_matches + per_page - 1) // per_page
-    matches = sorted_matches[(page - 1) * per_page: page * per_page]
 
-    # Remove temporary DateObj field before rendering
-    for match in matches:
-        del match["DateObj"]
+    # Retrieve matches with pagination
+    matches = list(db["past_matches"].find(query)
+                   .sort("Date", -1)  # Sort by Date in descending order
+                   .skip((page - 1) * per_page)
+                   .limit(per_page))
 
     for match in matches:
         match["_id"] = str(match["_id"])
