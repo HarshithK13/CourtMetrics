@@ -793,44 +793,35 @@ def schedules():
 
 @app.route('/get_upcoming_matches', methods=['GET'])
 def get_upcoming_matches():
-
+    page = int(request.args.get('page', 1))  # Default to page 1
+    per_page = 10  # Items per page
     month = request.args.get('month', '')
     team = request.args.get('team', '')
-    
-    if month == '' and team == '':
-        response = requests.get("http://127.0.0.1:4235/get_matches")
-        response.raise_for_status()  # Raise an error for bad status codes
-        matches = response.json()  # Parse JSON response
-        return jsonify(matches) 
-    if month == '' and team != '':
-        try:
-            response = requests.get("http://127.0.0.1:4235/get_matches", params={"team":team})
-            response.raise_for_status()  # Raise an error for bad status codes
-            matches = response.json()  # Parse JSON response
-            today = datetime.today().date()  # Get today's date
-            upcoming_matches = [
-                match for match in matches 
-                if 'Date' in match and datetime.strptime(match['Date'], '%a, %b %d, %Y').date() >= today
-            ]
-            return jsonify(upcoming_matches)  # Send data to frontend
-        except requests.RequestException as e:
-            print(f"Error fetching matches: {e}") 
-            return jsonify([])  # Return an empty list on error
-    else:
-        try:
-            response = requests.get("http://127.0.0.1:4235/get_matches", params={"month": month, "team": team})
-            response.raise_for_status()  # Raise an error for bad status codes
-            matches = response.json()  # Parse JSON response
-            # Filter upcoming matches from today
-            today = datetime.today().date()  # Get today's date
-            upcoming_matches = [
-                match for match in matches 
-                if 'Date' in match and datetime.strptime(match['Date'], '%a, %b %d, %Y').date() >= today
-            ]
-            return jsonify(upcoming_matches)  # Send filtered data to the frontend
-        except requests.RequestException as e:
-            print(f"Error fetching matches: {e}")
-            return jsonify([])  # Return an empty list on error
+
+    try:
+        params = {"month": month, "team": team}
+        response = requests.get("http://127.0.0.1:4235/get_matches", params=params)
+        response.raise_for_status()
+        matches = response.json()
+
+        today = datetime.today().date()
+        upcoming_matches = [
+            match for match in matches 
+            if 'Date' in match and datetime.strptime(match['Date'], '%a, %b %d, %Y').date() >= today
+        ]
+
+        total_matches = len(upcoming_matches)
+        total_pages = (total_matches + per_page - 1) // per_page
+        paginated_matches = upcoming_matches[(page - 1) * per_page: page * per_page]
+
+        return jsonify({
+            "matches": paginated_matches,
+            "current_page": page,
+            "total_pages": total_pages
+        })
+    except requests.RequestException as e:
+        print(f"Error fetching matches: {e}")
+        return jsonify({"matches": [], "current_page": 1, "total_pages": 1})
         
 
 

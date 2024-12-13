@@ -71,83 +71,112 @@
 
       <div id="error-message" class="text-danger text-center mt-3"></div>
     </div>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        // Handle search button click
-        document
-          .getElementById("search-btn")
-          .addEventListener("click", function () {
-            const selectedMonth = document.getElementById("month-select").value;
-            const selectedTeam = document.getElementById("team-select").value;
-
-            // If "Select Month" is selected, send an empty value to reset the table
-            if (selectedMonth === '') {
-              fetchMatches('', selectedTeam); // Show all matches if no month is selected
-            } else {
-              fetchMatches(selectedMonth, selectedTeam);
+    <div id="pagination" class="text-center mt-4">
+      <button id="prev-page" class="btn btn-secondary me-2">Previous</button>
+      <span id="page-info"> Page&nbsp;</span>
+      <span id="current-page">1</span>
+      <span id="page-info">&nbsp;of&nbsp;</span>
+      <span id="total-pages"> 1</span>
+      <button id="next-page" class="btn btn-secondary ms-2">Next</button>
+  </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let currentPage = 1;
+    
+        document.getElementById("search-btn").addEventListener("click", function () {
+            currentPage = 1;
+            fetchMatches();
+        });
+    
+        document.getElementById("prev-page").addEventListener("click", function () {
+            if (currentPage > 1) {
+                currentPage--;
+                fetchMatches();
             }
-          });
-
-        // Default fetch for no filters (initially shows all matches)
-        fetchMatches('', '');
-      });
-
-      function fetchMatches(month, team) {
-        let url = '/get_upcoming_matches';
-        let params = [];
-
-        if (month) {
-          params.push(`month=${month}`);
-        }
-        if (team) {
-          params.push(`team=${team}`);
-        }
-
-        if (params.length > 0) {
-          url += '?' + params.join('&');
-        }
-
-        fetch(url)
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Network response was not ok " + response.statusText);
+        });
+    
+        document.getElementById("next-page").addEventListener("click", function () {
+            const totalPages = parseInt(document.getElementById("total-pages").textContent);
+            if (currentPage < totalPages) {
+                currentPage++;
+                fetchMatches();
             }
-            return response.json();
-          })
-          .then((data) => {
-            console.log("Fetched data:", data); // Log fetched data for debugging
-            const tableBody = document.getElementById("matches-table-body");
-
-            // Clear previous table rows
-            tableBody.innerHTML = "";
-
-            if (data.length === 0) {
-              document.getElementById("error-message").textContent = "No upcoming matches found.";
-              return;
-            }
-
-            // Populate table with the fetched data
-            data.forEach((match) => {
-              const row = document.createElement("tr");
-
-              row.innerHTML = ` 
-                           <td>${match["Date"]}</td>
-                           <td>${match["Start (ET)"]}</td>
-                           <td>${match["Home/Neutral"]}</td>
-                           <td>${match["Visitor/Neutral"]}</td>
-                           <td>${match["Arena"]}</td>
-                       `;
-
-              tableBody.appendChild(row);
-            });
-          })
-          .catch((error) => {
-            console.error("Error loading matches:", error);
-            document.getElementById("error-message").textContent =
-              "Failed to load matches. Please try again later.";
-          });
-      }
+        });
+    
+        fetchMatches();
+    
+        function fetchMatches() {
+            const month = document.getElementById("month-select").value;
+            const team = document.getElementById("team-select").value;
+            
+            let url = `/get_upcoming_matches?page=${currentPage}`;
+            
+            if (month) url += `&month=${month}`;
+            if (team) url += `&team=${team}`;
+    
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById("matches-table-body");
+                    tableBody.innerHTML = "";
+    
+                    if (data.matches.length === 0) {
+                        document.getElementById("error-message").textContent = "No upcoming matches found.";
+                        return;
+                    }
+    
+                    data.matches.forEach(match => {
+                        const row = document.createElement("tr");
+                        row.innerHTML =
+                            `<td>${match["Date"]}</td><td>${match["Start (ET)"]}</td>` +
+                            `<td>${match["Home/Neutral"]}</td><td>${match["Visitor/Neutral"]}</td>` +
+                            `<td>${match["Arena"]}</td>`;
+                        tableBody.appendChild(row);
+                    });
+    
+                    document.getElementById("current-page").textContent = data.current_page;
+                    document.getElementById("total-pages").textContent = data.total_pages;
+                    updatePaginationControls();
+                })
+                .catch(error => {
+                    console.error("Error loading matches:", error);
+                    document.getElementById("error-message").textContent =
+                        "Failed to load matches. Please try again later.";
+                });
+        }
+    
+        function updatePaginationControls() {
+            const totalPages = parseInt(document.getElementById("total-pages").textContent);
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = currentPage === totalPages;
+        }
+    });
     </script>
+    
 
-{% endblock %}
+    
+    <style>
+      #pagination {
+          display: flex;
+          justify-content: center;
+      }
+      
+      #pagination button:disabled {
+          background-color: #eaeaea;
+      }
+      
+      .table th, .table td {
+          text-align: center;
+      }
+      
+      .form-select.w-auto {
+          display: inline-block;
+      }
+      
+      #pagination #page-info, #pagination #current-page, #pagination #total-pages {
+         font-weight: bold;
+      }
+      </style>
+      
+      {% endblock %}
+      
