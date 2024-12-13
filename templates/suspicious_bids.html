@@ -13,7 +13,7 @@
     <table class="suspicious-table">
         <thead>
             <tr>
-                <th>Username</th>
+                <th>Email ID</th>
                 <th>Match</th>
                 <th>Selected Team</th>
                 <th>Amount</th>
@@ -26,7 +26,7 @@
         <tbody>
             {% for bet in suspicious_bets %}
             <tr id="suspicious-bet-{{ bet.bet_id }}">
-                <td>{{ bet.username }}</td>
+                <td>{{ bet.email }}</td>
                 <td>{{ bet.match_id }}</td>
                 <td>{{ bet.selected_team }}</td>
                 <td>${{ bet.amount }}</td>

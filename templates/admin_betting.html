@@ -28,7 +28,7 @@
     <table class="betting-table">
         <thead>
             <tr>
-                <th>Username</th>
+                <th>Email ID</th>
                 <th>Match</th>
                 <th>Selected Team</th>
                 <th>Bet Amount</th>
@@ -40,7 +40,7 @@
         <tbody>
             {% for bet in bets %}
             <tr id="bet-{{ bet.id }}">
-                <td>{{ bet.username }}</td>
+                <td>{{ bet.email }}</td>
                 <td>{{ bet.match_id }}</td>
                 <td>{{ bet.selected_team }}</td>
                 <td>${{ bet.amount }}</td>

@@ -26,7 +26,7 @@
 
         <!-- Admin Greeting and Logout -->
         <div class="nav-login-signup">
-            <div id="user-greeting" class="user-greeting-container">
+            <div id="user-greeting" style="display: none;" class="user-greeting-container">
                 <p class="appname">Hi, <span id="user-name"></span>!</p>               
                 <button onclick="logout()" class="nav-button logout-btn">Logout</button>
             </div>
@@ -40,8 +40,10 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const userName = localStorage.getItem('user_name');
+            const userGreeting = document.getElementById('user-greeting');
             if (userName) {
                 document.getElementById('user-name').textContent = userName;
+                userGreeting.style.display = 'flex';
             }
         });
 

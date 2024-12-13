@@ -84,12 +84,13 @@ wallet_balance = 100  # Initial dummy balance
 def place_bid():
     global wallet_balance
     current_user = get_jwt_identity()
+    print(current_user)
     match_id = request.form.get('match_id')
     selected_team = request.form.get('selected_team')
     bet_amount = int(request.form.get('bet_amount'))
 
     # Fetch user data from the database
-    user_data = users_collection.find_one({"username": current_user})
+    user_data = users_collection.find_one({"email": current_user})
     wallet_balance = user_data.get("wallet_balance", 1000)
 
     # Check if the user has already placed a bet for the match
@@ -103,7 +104,7 @@ def place_bid():
     # Deduct bet amount from wallet immediately
     new_balance = wallet_balance - bet_amount
     users_collection.update_one(
-        {'username': current_user},
+        {'email': current_user},
         {'$set': {'wallet_balance': new_balance}}
     )
 
@@ -118,7 +119,7 @@ def place_bid():
 
     # Record the transaction in payment history
     payment_record = {
-        "username": current_user,
+        "email": current_user,
         "amount": -bet_amount,
         "date": datetime.now(),
         "balance_after_transaction": new_balance,
@@ -144,7 +145,7 @@ def add_funds_dummy():
         return jsonify({'success': False, 'message': 'Invalid input'}), 400
 
     # Fetch the user's wallet balance from MongoDB
-    user_data = users_collection.find_one({"username": current_user})
+    user_data = users_collection.find_one({"email": current_user})
     if not user_data:
         return jsonify({'success': False, 'message': 'User not found'}), 404
     
@@ -155,11 +156,11 @@ def add_funds_dummy():
 
     # Simulate adding funds
     new_balance = user_data.get("wallet_balance", 1000) + amount_to_add
-    users_collection.update_one({"username": current_user}, {"$set": {"wallet_balance": new_balance}})
+    users_collection.update_one({"email": current_user}, {"$set": {"wallet_balance": new_balance}})
 
     # Record the dummy transaction in the payment history
     payment_record = {
-        "username": current_user,
+        "email": current_user,
         "amount": amount_to_add,
         "date": datetime.now(),
         "balance_after_transaction": new_balance,
@@ -180,7 +181,7 @@ def add_funds_dummy():
 def get_user_bids():
     current_user = get_jwt_identity()
     user_bids = [bid for bid in placed_bids if bid['user'] == current_user]
-    user_data = users_collection.find_one({"username": current_user})
+    user_data = users_collection.find_one({"email": current_user})
     wallet_balance = user_data.get("wallet_balance", 1000)
     return jsonify({'user_bids': user_bids, 'wallet_balance': wallet_balance})
 
@@ -245,13 +246,12 @@ def predict(home_team,away_team):
 
 @app.route('/available_bids', methods=['GET'])
 @jwt_required(optional=True)
-    
 def available_bids():
     current_user = get_jwt_identity()
     wallet_balance = None
 
     if current_user:
-        user_data = users_collection.find_one({"username": current_user})
+        user_data = users_collection.find_one({"email": current_user})
         if user_data:
             wallet_balance = user_data.get("wallet_balance", 1000)
 
@@ -315,7 +315,7 @@ def update_previous_day_matches(current_user):
             process_bets(match['_id'], home_score, away_score, current_user)
 
 def process_bets(match_id, home_score, away_score, current_user):
-    bets = payment_history_collection.find({"match_id": match_id, "username": current_user, "transaction_type": "bid"})
+    bets = payment_history_collection.find({"match_id": match_id, "email": current_user, "transaction_type": "bid"})
 
     for bet in bets:
         bet_amount = abs(bet['amount'])
@@ -331,16 +331,16 @@ def process_bets(match_id, home_score, away_score, current_user):
 
 def update_user_balance(username, amount):
     users_collection.update_one(
-        {"username": username},
+        {"email": username},
         {"$inc": {"wallet_balance": amount}}
     )
 
 def record_transaction(username, amount, transaction_type, match_id):
     payment_record = {
-        "username": username,
+        "email": username,
         "amount": amount,
         "date": datetime.now(),
-        "balance_after_transaction": users_collection.find_one({"username": username})['wallet_balance'],
+        "balance_after_transaction": users_collection.find_one({"email": username})['wallet_balance'],
         "transaction_type": transaction_type,
         "match_id": match_id
     }
@@ -434,6 +434,32 @@ def verify_otp():
         return jsonify({"message": "OTP verified successfully!"}), 200
     else:
         return jsonify({"error": "Invalid OTP"}), 400
+    
+
+@app.route('/forgot_password', methods=['GET'])
+def forgot_password():
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password', methods=['POST'])
+def reset_password():
+    data = request.json
+    email = data.get('email')
+    new_password = data.get('newPassword')
+
+    if not email or not new_password or len(new_password) < 12:
+        return jsonify({"message": "Invalid input or password too short"}), 400
+
+    # Find user in the database
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    # Hash the new password
+    hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    # Update password in the database
+    users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
+    return jsonify({"message": "Password reset successful"}), 200
 
 
 @app.route('/check_results')
@@ -458,27 +484,27 @@ def check_results():
                             wallet_balance += bid['bet_amount'] * 2  # Double reward
                             results_messages.append(f"Your team {home_team_name} won! You earned ${bid['bet_amount'] * 2}.")
                             # Add this line after updating wallet_balance in check_results function
-                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                         elif home_score == away_score:  # Draw
                             wallet_balance += bid['bet_amount']  # Refund original bet amount
                             results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
-                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                         else:
 
                             results_messages.append(f"Your team {home_team_name} lost.")
-                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                     elif bid['selected_team'] == "away":
                         if away_score > home_score:  # Away team wins
                             wallet_balance += bid['bet_amount'] * 2  # Double reward
                             results_messages.append(f"Your team {away_team_name} won! You earned ${bid['bet_amount'] * 2}.")
-                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                         elif away_score == home_score:  # Draw
                             wallet_balance += bid['bet_amount']  # Refund original bet amount
                             results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
-                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
                         else:
                             results_messages.append(f"Your team {away_team_name} lost.")
-                            users_collection.update_one( {'username': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
 
                     # Mark this bid as resolved
                     bid['status'] = "resolved"
@@ -518,7 +544,7 @@ def get_wallet_balance():
     current_user = get_jwt_identity()  # Get current user's username from JWT
     
     # Fetch user's wallet balance from MongoDB
-    user_data = users_collection.find_one({"username": current_user})
+    user_data = users_collection.find_one({"email": current_user})
     if user_data:
         return jsonify({'wallet_balance': user_data.get("wallet_balance", 1000)})  # Default balance of 1000
     else:
@@ -527,18 +553,18 @@ def get_wallet_balance():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get("username")
+        email = request.form.get("email")
         password = request.form.get("password")
 
         # Find the user in the database
-        user = users_collection.find_one({"username": username, "Role": "user"})
+        user = users_collection.find_one({"email": email, "Role": "user"})
 
         # Verify user and password
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             # Generate access token
-            access_token = create_access_token(identity=username)
+            access_token = create_access_token(identity=email)
             # session['access_token'] = access_token
-            return jsonify({"access_token": access_token, "name": user["Name"]}), 200
+            return jsonify({"access_token": access_token, "username": user["username"]}), 200
         else:
             return jsonify({"message": "Invalid username or password"}), 401
 
@@ -548,13 +574,13 @@ def login():
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
-        username = request.form.get("username")
+        email = request.form.get("email")
         password = request.form.get("password")
-        admin = users_collection.find_one({"username": username, "Role": "admin"})
+        admin = users_collection.find_one({"email": email, "Role": "admin"})
 
         if admin and bcrypt.checkpw(password.encode('utf-8'), admin['password'].encode('utf-8')):
-            access_token = create_access_token(identity=username)
-            return jsonify({"access_token": access_token, "name": admin["Name"]}), 200
+            access_token = create_access_token(identity=email)
+            return jsonify({"admin_access_token": access_token, "username": admin["username"]}), 200
         else:
             return jsonify({"message": "Invalid admin credentials"}), 401
 
@@ -584,7 +610,7 @@ def admin_home():
             
         formatted_bet = {
             'bet_id': str(bet['_id']),
-            'username': bet.get('username', 'Unknown'),
+            'email': bet.get('email', 'Unknown'),
             'match_id': bet.get('match_id', 'Unknown Match'),
             'selected_team': bet.get('selected_team', 'Unknown'),
             'amount': bet.get('amount', 0),
@@ -599,7 +625,7 @@ def admin_home():
     for bet in bets:
         formatted_bet = {
             'id': str(bet['_id']),
-            'username': bet.get('username', 'Unknown'),
+            'email': bet.get('email', 'Unknown'),
             'match_id': bet.get('match_id', 'Unknown Match'),
             'selected_team': bet.get('selected_team', 'Unknown'),
             'amount': abs(bet.get('amount', 0)),
@@ -632,7 +658,7 @@ def report_bet():
         # Create suspicious bet record
         suspicious_bet = {
             "bet_id": str(bet["_id"]),
-            "username": bet.get("username", "Unknown"),
+            "email": bet.get("email", "Unknown"),
             "match_id": bet.get("match_id", "Unknown Match"),
             "selected_team": bet.get("selected_team", "Unknown"),
             "amount": abs(bet.get("amount", 0)),
@@ -687,7 +713,7 @@ def betting_history():
     for bet in bets:
         formatted_bet = {
             'id': str(bet['_id']),
-            'username': bet.get('username', 'Unknown'),
+            'email': bet.get('email', 'Unknown'),
             'match_id': bet.get('match_id', 'Unknown Match'),
             'selected_team': bet.get('selected_team', 'Unknown'),
             'amount': abs(bet.get('amount', 0)),
@@ -711,7 +737,7 @@ def suspicious_bids():
     for bet in suspicious_bets:
         formatted_bet = {
             'bet_id': str(bet['_id']),
-            'username': bet.get('username', 'Unknown'),
+            'email': bet.get('email', 'Unknown'),
             'match_id': bet.get('match_id', 'Unknown Match'),
             'selected_team': bet.get('selected_team', 'Unknown'),
             'amount': bet.get('amount', 0),
@@ -727,30 +753,30 @@ def suspicious_bids():
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        username = request.form.get("username")
+        email = request.form.get("email")
         password = request.form.get("password")
         mobile = request.form.get("mobile")
-        name = request.form.get("name")
+        username = request.form.get("username")
         address = request.form.get("address")
 
         # Validate password length
         if len(password) < 12:
             return jsonify({"message": "Password is too short"}), 400
         
-        if "@gmail.com" not in username:
+        if "@gmail.com" not in email:
             return jsonify({"message": "Please use a Gmail account"}), 400
 
         # Check if the user already exists
-        if users_collection.find_one({"username": username}):
+        if users_collection.find_one({"email": email}):
             return jsonify({"message": "User already exists, Please Log In"}), 409
 
         # Ensure required fields are not empty
-        if not all([username, password, mobile, name, address]):
+        if not all([email, password, mobile, username, address]):
             return jsonify({"message": "Please fill all the fields"}), 400
 
         # Hash the password and save user data
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        user = {"username": username, "password": hashed_password, "Name": name, "Mobile": mobile, "Address": address, "Role": "user"}
+        user = {"email": email, "password": hashed_password, "username": username, "Mobile": mobile, "Address": address, "Role": "user"}
 
         # Insert user into database
         users_collection.insert_one(user)
@@ -825,7 +851,7 @@ def api_payment_history():
     end_date_str = request.args.get('end_date', '')
     
     # Build query
-    query = {"username": current_user}
+    query = {"email": current_user}
     
     if transaction_type:
         query['transaction_type'] = transaction_type
@@ -867,18 +893,18 @@ def add_funds():
         return jsonify({'success': False, 'message': 'Invalid amount'}), 400
     
     amount_to_add = int(amount_to_add)
-    user_data = users_collection.find_one({"username": current_user})
+    user_data = users_collection.find_one({"email": current_user})
     
     if not user_data:
         return jsonify({'success': False, 'message': 'User not found'}), 404
     
     # Update the user's wallet balance
     new_balance = user_data.get("wallet_balance", 1000) + amount_to_add
-    users_collection.update_one({"username": current_user}, {"$set": {"wallet_balance": new_balance}})
+    users_collection.update_one({"email": current_user}, {"$set": {"wallet_balance": new_balance}})
     
     # Record the transaction in the payment history
     payment_record = {
-        "username": current_user,
+        "email": current_user,
         "amount": amount_to_add,
         "date": datetime.now(),
         "balance_after_transaction": new_balance,
@@ -899,7 +925,7 @@ def withdraw_funds():
         return jsonify({'success': False, 'message': 'Invalid amount'}), 400
     
     amount_to_withdraw = int(amount_to_withdraw)
-    user_data = users_collection.find_one({"username": current_user})
+    user_data = users_collection.find_one({"email": current_user})
     
     if not user_data:
         return jsonify({'success': False, 'message': 'User not found'}), 404
@@ -911,13 +937,13 @@ def withdraw_funds():
     # Update the user's wallet balance
     new_balance = current_balance - amount_to_withdraw
     users_collection.update_one(
-        {"username": current_user}, 
+        {"email": current_user}, 
         {"$set": {"wallet_balance": new_balance}}
     )
     
     # Record the transaction in the payment history
     payment_record = {
-        "username": current_user,
+        "email": current_user,
         "amount": -amount_to_withdraw,
         "date": datetime.now(),
         "balance_after_transaction": new_balance,
@@ -1108,8 +1134,11 @@ def get_matches():
     # print(matches)
     return jsonify(matches)
 
-@app.route("/get_player_stats", methods=["GET"])
-def get_player_stats():
+
+@app.route("/api/player_stats", methods=["GET"])
+def api_player_stats():
+    page = int(request.args.get("page", 1))
+    per_page = 10
     year = request.args.get("year", "").strip()
     player = request.args.get("player", "").strip()
     stat_type = request.args.get("stat_type", "perGame").strip()
@@ -1122,59 +1151,58 @@ def get_player_stats():
     
     selected_collection = collection_map.get(stat_type, perGame_collection)
 
-    if not year and not player:
-        year = "2024"
-        player = ""
-
     query = {}
     if year:
         query["Year"] = {"$regex": f"{year}", "$options": "i"}
     if player:
         query["Player"] = {"$regex": f"{player}", "$options": "i"}
 
-    # Modified pipeline with proper error handling
     pipeline = [
         {"$match": query},
+        {"$match": {"Player": {"$ne": "League Average"}}},
         {"$addFields": {
             "RkInt": {
                 "$convert": {
                     "input": "$Rk",
                     "to": "int",
-                    "onError": 0,  # Handle conversion errors
-                    "onNull": 0    # Handle null values
+                    "onError": 0,
+                    "onNull": 0
                 }
             }
         }},
         {"$sort": {"RkInt": 1}},
-        {"$project": {"RkInt": 0}}  # Remove the temporary field
+        {"$project": {"RkInt": 0}}
     ]
 
     players = list(selected_collection.aggregate(pipeline))
+    
+    total_players = len(players)
+    total_pages = (total_players + per_page - 1) // per_page
+    players_paginated = players[(page - 1) * per_page: page * per_page]
 
-    years = selected_collection.distinct("Year")
-    players_list = selected_collection.distinct("Player")
-
-    if not players:
-        return render_template(
-            "player_stats.html",
-            stats=[],
-            error=f"No stats found for year '{year}' and player '{player}'. Please check your input.",
-            years=sorted(years),
-            players=sorted(players_list),
-            stat_type=stat_type
-        )
-
-    for player in players:
+    for player in players_paginated:
         player.pop('_id', None)
+
+    return jsonify({
+        "stats": players_paginated,
+        "current_page": page,
+        "total_pages": total_pages
+    })
+
+@app.route("/get_player_stats", methods=["GET"])
+def get_player_stats():
+    years = sorted(perGame_collection.distinct("Year"))
+    players_list = sorted(perGame_collection.distinct("Player"))
 
     return render_template(
         "player_stats.html",
-        stats=players,
+        stats=[],
         error=None,
-        years=sorted(years),
-        players=sorted(players_list),
-        stat_type=stat_type
+        years=years,
+        players=players_list,
+        stat_type="perGame"
     )
+
 @app.route("/past_matches", methods=["GET"])
 def past_matches():
         # Get distinct teams for filter dropdown
@@ -1201,31 +1229,15 @@ def api_past_matches():
             {"Home/Neutral": {"$regex": team, "$options": "i"}}
         ]
 
-    # Fetch and sort matches from the collection
-    matches = list(db["past_matches"].find(query))
-
-    # Filter out invalid dates and convert to datetime for sorting
-    for match in matches:
-        match["_id"] = str(match["_id"])
-        try:
-            match["DateObj"] = datetime.strptime(match["Date"], "%Y-%m-%d")
-        except ValueError:
-            try:
-                match["DateObj"] = datetime.strptime(match["Date"], "%a, %b %d, %Y")
-            except ValueError:
-                match["DateObj"] = datetime.min  
-   
-    # Sort matches by DateObj in descending order
-    sorted_matches = sorted(matches, key=lambda x: x["DateObj"], reverse=True)
-
-     # Pagination logic
-    total_matches = len(sorted_matches)
+    # Count total documents
+    total_matches = db["past_matches"].count_documents(query)
     total_pages = (total_matches + per_page - 1) // per_page
-    matches = sorted_matches[(page - 1) * per_page: page * per_page]
 
-    # Remove temporary DateObj field before rendering
-    for match in matches:
-        del match["DateObj"]
+    # Retrieve matches with pagination
+    matches = list(db["past_matches"].find(query)
+                   .sort("Date", -1)  # Sort by Date in descending order
+                   .skip((page - 1) * per_page)
+                   .limit(per_page))
 
     for match in matches:
         match["_id"] = str(match["_id"])
@@ -1241,8 +1253,8 @@ def delete_user(user_id):
 
     # Attempt to delete the user by user_id
     find_user = users_collection.find_one({"_id": ObjectId(user_id)})
-    user_name = find_user["username"]
-    find_details = list(payment_history_collection.find({"username": user_name}))
+    user_name = find_user["email"]
+    find_details = list(payment_history_collection.find({"email": user_name}))
     for item in find_details:
         payment_history_collection.delete_one({"_id": item["_id"]})
 

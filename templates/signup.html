@@ -7,10 +7,10 @@
 
 <script type="text/babel">
     const Signup = () => {
-        const [username, setUsername] = React.useState('');
+        const [email, setUsername] = React.useState('');
         const [password, setPassword] = React.useState('');
         const [mobile, setMobile] = React.useState('');
-        const [name, setName] = React.useState('');
+        const [username, setName] = React.useState('');
         const [address, setAddress] = React.useState('');
         const [message, setMessage] = React.useState('');
 
@@ -22,10 +22,10 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
-                    username,
+                    email,
                     password,
                     mobile: mobile,
-                    name: name,
+                    username: username,
                     address: address
                 })
             });
@@ -44,11 +44,11 @@
                 <h2>Sign Up</h2>
                 {message && <p className="message">{message}</p>}
                 <form onSubmit={handleSignup} className="signup-form">
-                    <label htmlFor="username">Username:</label>
+                    <label htmlFor="email">Email ID:</label>
                     <input
                         type="text"
-                        id="username"
-                        value={username}
+                        id="email"
+                        value={email}
                         onChange={e => setUsername(e.target.value)}
                         required
                         className="form-input"
@@ -71,11 +71,11 @@
                         required
                         className="form-input"
                     />
-                    <label htmlFor="name">Name:</label>
+                    <label htmlFor="username">Username:</label>
                     <input
                         type="text"
-                        id="name"
-                        value={name}
+                        id="username"
+                        value={username}
                         onChange={e => setName(e.target.value)}
                         required
                         className="form-input"
