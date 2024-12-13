@@ -1134,8 +1134,11 @@ def get_matches():
     # print(matches)
     return jsonify(matches)
 
-@app.route("/get_player_stats", methods=["GET"])
-def get_player_stats():
+
+@app.route("/api/player_stats", methods=["GET"])
+def api_player_stats():
+    page = int(request.args.get("page", 1))
+    per_page = 10
     year = request.args.get("year", "").strip()
     player = request.args.get("player", "").strip()
     stat_type = request.args.get("stat_type", "perGame").strip()
@@ -1148,59 +1151,58 @@ def get_player_stats():
     
     selected_collection = collection_map.get(stat_type, perGame_collection)
 
-    if not year and not player:
-        year = "2024"
-        player = ""
-
     query = {}
     if year:
         query["Year"] = {"$regex": f"{year}", "$options": "i"}
     if player:
         query["Player"] = {"$regex": f"{player}", "$options": "i"}
 
-    # Modified pipeline with proper error handling
     pipeline = [
         {"$match": query},
+        {"$match": {"Player": {"$ne": "League Average"}}},
         {"$addFields": {
             "RkInt": {
                 "$convert": {
                     "input": "$Rk",
                     "to": "int",
-                    "onError": 0,  # Handle conversion errors
-                    "onNull": 0    # Handle null values
+                    "onError": 0,
+                    "onNull": 0
                 }
             }
         }},
         {"$sort": {"RkInt": 1}},
-        {"$project": {"RkInt": 0}}  # Remove the temporary field
+        {"$project": {"RkInt": 0}}
     ]
 
     players = list(selected_collection.aggregate(pipeline))
+    
+    total_players = len(players)
+    total_pages = (total_players + per_page - 1) // per_page
+    players_paginated = players[(page - 1) * per_page: page * per_page]
 
-    years = selected_collection.distinct("Year")
-    players_list = selected_collection.distinct("Player")
-
-    if not players:
-        return render_template(
-            "player_stats.html",
-            stats=[],
-            error=f"No stats found for year '{year}' and player '{player}'. Please check your input.",
-            years=sorted(years),
-            players=sorted(players_list),
-            stat_type=stat_type
-        )
-
-    for player in players:
+    for player in players_paginated:
         player.pop('_id', None)
+
+    return jsonify({
+        "stats": players_paginated,
+        "current_page": page,
+        "total_pages": total_pages
+    })
+
+@app.route("/get_player_stats", methods=["GET"])
+def get_player_stats():
+    years = sorted(perGame_collection.distinct("Year"))
+    players_list = sorted(perGame_collection.distinct("Player"))
 
     return render_template(
         "player_stats.html",
-        stats=players,
+        stats=[],
         error=None,
-        years=sorted(years),
-        players=sorted(players_list),
-        stat_type=stat_type
+        years=years,
+        players=players_list,
+        stat_type="perGame"
     )
+
 @app.route("/past_matches", methods=["GET"])
 def past_matches():
         # Get distinct teams for filter dropdown
