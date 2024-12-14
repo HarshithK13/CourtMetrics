@@ -62,14 +62,14 @@ const Login = () => {
                         required
                         className="form-input"
                     />
-                    <button
-                        type="button"
+                    <span
+                        className="eye-icon"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="toggle-password-button"
                     >
-                        {showPassword ? "Hide Password" : "Show Password"}
-                    </button>
+                        {showPassword ? "🙈" : "👁️"}
+                    </span>
                 </div>
+
                 <div className="button-group">
                     <button type="submit" className="submit-button">Login</button>
                     <button
@@ -94,6 +94,24 @@ const Login = () => {
 ReactDOM.render(<Login />, document.getElementById('root'));
 
 </script>
+<style>
+    .password-container {
+    position: relative;
+}
+
+.form-input {
+    width: 100%;
+    padding-right: 50px; /* Ensure space for the eye icon */
+}
+
+.eye-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-100%);
+    cursor: pointer;
+    font-size: 18px; /* Adjust size as needed */
+}
 
 </style>
 {% endblock %}
