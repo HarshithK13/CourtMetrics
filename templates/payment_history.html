@@ -177,6 +177,12 @@ function fetchPaymentHistory(page = 1) {
             const detailsCell = row.insertCell(4);
             if (record.transaction_type === 'bid') {
                 detailsCell.textContent = `Bet on ${record.selected_team}`;
+            } else if (record.transaction_type === 'Bid Reward'){
+                detailsCell.textContent = `Won ${'$'+record.amount.split('+')[1]} for bet on ${record.selected_team}`;
+            } else if (record.transaction_type === 'withdraw_funds'){
+                detailsCell.textContent = `Withdrawal of funds: ${'$'+record.amount}`;
+            } else if (record.transaction_type === 'add_funds_credit_card' || record.transaction_type === 'add_funds_paypal' || record.transaction_type === 'add_funds_apple_pay'){
+                detailsCell.textContent = `Added funds: ${'$'+record.amount}`;
             } else {
                 detailsCell.textContent = 'N/A';
             }

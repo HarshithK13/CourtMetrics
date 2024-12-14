@@ -509,7 +509,7 @@ input[type="text"], input[type="email"], input[type="password"] {
 }
 
 .admin-home-container {
-    max-width: 800px;
+    max-width: 80%;
     margin: 50px auto;
     padding: 20px;
     border-radius: 8px;
