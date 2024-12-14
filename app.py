@@ -91,7 +91,7 @@ def place_bid():
 
     # Fetch user data from the database
     user_data = users_collection.find_one({"email": current_user})
-    wallet_balance = user_data.get("wallet_balance", 1000)
+    wallet_balance = user_data.get("wallet_balance", 100)
 
     # Check if the user has already placed a bet for the match
     existing_bet = next((bid for bid in placed_bids if bid['match_id'] == match_id and bid['user'] == current_user), None)
@@ -790,11 +790,10 @@ def signup():
 def schedules():
     return render_template('schedules.html')
 
-
 @app.route('/get_upcoming_matches', methods=['GET'])
 def get_upcoming_matches():
-    page = int(request.args.get('page', 1))  # Default to page 1
-    per_page = 10  # Items per page
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))  # Get items per page from request
     month = request.args.get('month', '')
     team = request.args.get('team', '')
 
@@ -952,6 +951,8 @@ def withdraw_funds():
 
 @app.route("/get_team_stats", methods=["GET"])
 def get_team_stats():
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get('per_page', 10)) 
     year = request.args.get("year", "").strip()
     team = request.args.get("team", "").strip()
 
@@ -1129,7 +1130,7 @@ def get_matches():
 @app.route("/api/player_stats", methods=["GET"])
 def api_player_stats():
     page = int(request.args.get("page", 1))
-    per_page = 10
+    per_page = int(request.args.get('per_page', 20))
     year = request.args.get("year", "").strip()
     player = request.args.get("player", "").strip()
     stat_type = request.args.get("stat_type", "perGame").strip()
@@ -1207,7 +1208,7 @@ def past_matches():
 def api_past_matches():
 
     page = int(request.args.get("page", 1))  # Default to page 1
-    per_page = 10  # Items per page
+    per_page = int(request.args.get('per_page', 20))  # Get items per 
     month = request.args.get("month", "").strip()
     team = request.args.get("team", "").strip()
 

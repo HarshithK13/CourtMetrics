@@ -31,6 +31,17 @@
             </select>
         </div>
 
+        <!-- Entries per page -->
+        <div class="me-3">
+            <label for="entries-select" class="form-label">Entries per page:</label>
+            <select id="entries-select" class="form-select w-auto">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+            </select>
+        </div>
+
         <!-- Search Button -->
         <div class="align-self-end">
             <button id="search-btn" class="btn btn-primary">Search Matches</button>
@@ -64,18 +75,19 @@
     </div>
 
     <!-- Pagination -->
-    <div id="pagination" class="text-center mt-4">
-        <button id="prev-page" class="btn btn-secondary me-2">Previous</button>
-        <span id="page-info"> Page&nbsp;</span>
-        <span id="current-page">1</span>
-        <span id="page-info">&nbsp;of&nbsp;</span>
-        <span id="total-pages"> 1</span>
+    <div id="pagination" class="pagination-container text-center mt-4">
+        <button id="prev-page" class="btn btn-secondary me-2" disabled>Previous</button>
+        <span id="page-info">
+            Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+        </span>
         <button id="next-page" class="btn btn-secondary ms-2">Next</button>
     </div>
 </div>
 
 <script>
+// JavaScript code
 let currentPage = 1;
+let perPage = parseInt(document.getElementById("entries-select").value);
 
 document.addEventListener("DOMContentLoaded", function () {
     loadMatches();
@@ -99,6 +111,12 @@ document.addEventListener("DOMContentLoaded", function () {
             loadMatches();
         }
     });
+
+    document.getElementById("entries-select").addEventListener("change", function () {
+        perPage = parseInt(this.value);
+        currentPage = 1;
+        loadMatches();
+    });
 });
 
 function updatePaginationControls() {
@@ -111,7 +129,7 @@ function loadMatches() {
     const month = document.getElementById("month-select").value;
     const team = document.getElementById("team-select").value;
 
-    fetch(`/api/past_matches?page=${currentPage}&month=${month}&team=${team}`)
+    fetch(`/api/past_matches?page=${currentPage}&per_page=${perPage}&month=${month}&team=${team}`)
         .then(response => response.json())
         .then(data => {
             const matchesTableBody = document.getElementById("matches-table-body");
@@ -134,15 +152,13 @@ function loadMatches() {
                     <td>${match.PTS}</td>
                     <td>${match["Home/Neutral"]}</td>
                     <td>${match.Home_PTS}</td>
-                    <td>${match["no. of OT"] || '-'}</td>
-                `;
+                    <td>${match["no. of OT"] || '-'}</td>`;
                 matchesTableBody.appendChild(row);
             });
 
             document.getElementById("current-page").textContent = data.current_page;
             document.getElementById("total-pages").textContent = data.total_pages;
             updatePaginationControls();
-
         })
         .catch(error => {
             console.error("Error loading matches:", error);
@@ -151,52 +167,77 @@ function loadMatches() {
 </script>
 
 <style>
-.form-select.w-auto {
-    display: inline-block;
-    width: auto;
-    min-width: 200px;
-}
 
-.table th {
-    text-align: center;
-    vertical-align: middle;
-}
+      /* Container styling */
+      .container {
+          width: 100%;
+          margin: 0;
+          padding: 20px;
+          background-color: rgb(0, 0, 68);
+          color: white;
+          border-radius: 10px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      .table {
+          width: 100%;
+          margin-top: 20px;
+      }
+      
+      .table th {
+          text-align: center;
+          padding: 10px;
+          color: #ffffff; /* Change this to your desired text color */
+          background-color: #343a40; /* Background color for header */
+      }
+      
+      .table td {
+          text-align: center;
+          padding: 10px;
+      }
+      
+      .table tbody tr {
+          transition: background-color 0.1s ease;
+      }
+      
+      .table tbody tr:hover {
+          background-color: rgb(255, 123, 0);
+      }
+      
+      #pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 10px;
+          margin: 20px auto;
+      }
+      
+      #pagination button {
+          padding: 10px 20px;
+          font-size: 16px;
+          border-radius: 5px;
+          border: none;
+          background-color: #007bff;
+          color: white;
+          cursor: pointer;
+          transition: all 0.1s ease;
+      }
+      
+      #pagination button:hover:not(:disabled) {
+          background-color: #0056b3;
+      }
+      
+      #pagination button:disabled {
+          background-color: #eaeaea;
+          color: #aaa;
+          cursor: not-allowed;
+      }
+      
+      #pagination #page-info {
+          font-weight: bold;
+          font-size: 16px;
+      }
 
-.table td {
-    text-align: center;
-    vertical-align: middle;
-}
-
-#pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 20px;
-}
-
-#pagination button {
-    padding: 8px 12px;
-    margin: 0 5px;
-    border: 1px solid #ccc;
-    background-color: #fff;
-    cursor: pointer;
-}
-
-#pagination button:disabled {
-    background-color: #eaeaea;
-    cursor: not-allowed;
-}
-
-#pagination #page-info {
-    font-weight: bold;
-}
-
-#pagination #current-page {
-    font-weight: bold;
-}
-
-#pagination #total-pages {
-    font-weight: bold;
-}
 </style>
+
 {% endblock %}
