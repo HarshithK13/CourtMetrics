@@ -159,10 +159,12 @@ transform: translateY(-3px);
 
 .nav-login-signup .login-btn:hover {
     background-color: #0056b3; /* Darker blue on hover */
+    background: linear-gradient(135deg, black,red);
 }
 
 .nav-login-signup .signup-btn:hover {
     background-color: #218838; /* Darker green on hover */
+    background: linear-gradient(135deg, black,red);
 }
 
 
