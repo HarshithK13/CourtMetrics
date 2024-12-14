@@ -139,7 +139,76 @@ document.getElementById("search-btn").addEventListener("click", function () {
 </script>
 
 
-
+<style>
+          /* Container styling */
+          .container {
+          width: 100%;
+          margin: 0;
+          padding: 20px;
+          background-color: rgb(0, 0, 68);
+          color: white;
+          border-radius: 10px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      .table {
+          width: 100%;
+          margin-top: 20px;
+      }
+      
+      .table th {
+          text-align: center;
+          padding: 10px;
+          color: #ffffff; /* Change this to your desired text color */
+          background-color: #343a40; /* Background color for header */
+      }
+      
+      .table td {
+          text-align: center;
+          padding: 10px;
+      }
+      
+      .table tbody tr {
+          transition: background-color 0.1s ease;
+      }
+      
+      .table tbody tr:hover {
+          background-color: rgb(255, 123, 0);
+      }
+      
+      #pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 10px;
+          margin: 20px auto;
+      }
+      
+      #pagination button {
+          padding: 10px 20px;
+          font-size: 16px;
+          border-radius: 5px;
+          border: none;
+          background-color: #007bff;
+          color: white;
+          cursor: pointer;
+          transition: all 0.1s ease;
+      }
+      
+      #pagination button:hover:not(:disabled) {
+          background-color: #0056b3;
+      }
+      
+      #pagination button:disabled {
+          background-color: #eaeaea;
+          color: #aaa;
+          cursor: not-allowed;
+      }
+      
+      #pagination #page-info {
+          font-weight: bold;
+          font-size: 16px;
+      }
 </style>
 
 {% endblock %}

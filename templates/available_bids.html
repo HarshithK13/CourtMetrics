@@ -67,6 +67,9 @@
         <div class="match-box">
             <p><strong>{{ match.home_team }} vs {{ match.away_team }}</strong></p>
             <p>Score: {{ match.home_score }} - {{ match.away_score }}</p>
+            <p>Predicted Winner: {{ match.predicted_winner }}</p>
+            <p>{{ match.home_team }} Win Probability: {{ match.prob_visitor | round(2) }}%</p>
+            <p>{{ match.away_team }} Win Probability: {{ match.prob_home | round(2) }}%</p>
         </div>
         <div class="betting-box" id="betting-box-{{ loop.index }}" data-betting-amount="{{ match.betting_amount }}" data-home-team="{{match.home_team}}" data-away-team="{{match.away_team}}">
             Please log in to place a bid.
@@ -74,6 +77,7 @@
     </div>
     {% endfor %}
 </div>
+
 
 
 
@@ -107,6 +111,21 @@
                 document.getElementById('wallet-balance').textContent = 'Error';
             });
         }
+        const matches = document.querySelectorAll('.match-row');
+        matches.forEach(match => {
+            const predictedWinner = match.querySelector('p:nth-child(3)').textContent.split(': ')[1];
+            if (predictedWinner) {
+                // Add a CSS class or style to highlight the predicted winner
+                if (predictedWinner.includes('Home')) {
+                    // Highlight home team
+                    match.querySelector('.match-box').style.border = '2px solid green';
+                } else {
+                    // Highlight away team
+                    match.querySelector('.match-box').style.border = '2px solid blue';
+                }
+            }
+    });
+
     });
 
     let pendingBidData = {}; // Temporarily store bid data
@@ -327,5 +346,45 @@ function closeWithdrawPopup() {
         document.getElementById('wallet-limit-popup').style.display = 'none';
     }
 </script>
+<style>
+.matches-container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px; /* Increased space between match boxes */
+}
 
+.match-row {
+    display: flex;
+    justify-content: center;
+}
+
+.match-box {
+    background-color: #f5f5f5;
+    border-radius: 10px;
+    padding: 30px; /* Increased padding for more space inside */
+    width: 1300px; /* Adjust width for larger boxes */
+    height:150px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px; /* Space between match box and betting box */
+}
+
+.match-box p {
+    margin-bottom: 15px; /* Increased space between lines */
+}
+
+.match-box strong {
+    font-size: 1.4em; /* Larger font for team names */
+}
+
+.betting-box {
+    background-color: rgba(255,255,255,0.8);
+    border-radius: 10px;
+    padding: 30px;
+    height:150px;
+    width: 500px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+
+</style>
 {% endblock %}

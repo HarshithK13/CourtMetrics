@@ -3,7 +3,7 @@
 {% block title %}Suspicious Bids{% endblock %}
 
 {% block content %}
-<div class="admin-home-container">
+<div id="mmaincontent" class="admin-home-container">
     <h2>Suspicious Bids</h2>
     <div class="suspicious-bids-summary">
         <h3>Suspicious Activity Summary</h3>
@@ -42,22 +42,31 @@
     </table>
 </div>
 
+<div id="loginPopup" class="popup" style="display: none;">
+    <div class="popup-content">
+        <p>You are not logged in as admin. Redirecting to the admin login page...</p>
+        <button onclick="redirectToLogin()">OK</button>
+    </div>
+</div>
+
 <style>
+/* Main container styles */
 .admin-home-container {
     max-width: 1200px;
     margin: 50px auto;
     padding: 20px;
     background-color: #ffffff;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Summary section styles */
 .suspicious-bids-summary {
     background-color: #f8f9fa;
     padding: 20px;
     margin-bottom: 30px;
     border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .total-suspicious {
@@ -66,12 +75,13 @@
     color: #dc3545;
 }
 
+/* Table styles */
 .suspicious-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
     background-color: #f9f9f9;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .suspicious-table th,
@@ -107,22 +117,73 @@
     background-color: #e7e7e7;
 }
 
-h2 {
-    color: #333;
-    margin-bottom: 20px;
+/* Popup styles */
+.popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
 
-h3 {
-    color: #666;
-    margin-bottom: 10px;
+.popup-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.popup-content button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.popup-content button:hover {
+    background-color: #0056b3;
+}
+
+/* Hidden content */
+#mmaincontent.hidden {
+    display: none;
 }
 </style>
 
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const accessToken = localStorage.getItem('admin_access_token');
+    const userName = localStorage.getItem('user_name');
+    const mainContent = document.getElementById("mmaincontent");
+    const loginPopup = document.getElementById("loginPopup");
+
+    // Check if the user is logged in
+    if (!accessToken || !userName) {
+        // Show the login popup
+        loginPopup.style.display = "flex";
+        // Hide the main content
+        mainContent.style.display = "none";
+    }
+});
+
+function redirectToLogin() {
+    // Redirect to the admin login page
+    window.location.href = "/admin_login";
+}
+
 function deleteSuspiciousBet(betId) {
     if (confirm("Are you sure you want to delete this suspicious bet?")) {
-        const accessToken = localStorage.getItem('access_token');
-        
+        const accessToken = localStorage.getItem('admin_access_token');
+
+        // Perform DELETE request to delete the bet
         fetch(`/delete_suspicious_bet/${betId}`, {
             method: "DELETE",
             headers: {
@@ -132,6 +193,7 @@ function deleteSuspiciousBet(betId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Remove the deleted bet row from the table
                 document.getElementById(`suspicious-bet-${betId}`).remove();
                 alert("Suspicious bet deleted successfully!");
             } else {
