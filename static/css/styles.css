@@ -432,7 +432,8 @@ input[type="text"], input[type="email"], input[type="password"] {
 /* Match Row Layout */
 .match-row {
     display: flex;
-    justify-content: space-between;
+    justify-content: center; /* Center the match boxes horizontally */
+    align-items: center;    /* Center them vertically if needed */
     margin-bottom: 50px;
     width: 100%; /* Ensure the row takes the full width */
 }
