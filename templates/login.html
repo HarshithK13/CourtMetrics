@@ -6,81 +6,94 @@
 <div id="root"></div>
 
 <script type="text/babel">
-    const Login = () => {
-        const [email, setUsername] = React.useState('');
-        const [password, setPassword] = React.useState('');
-        const [message, setMessage] = React.useState('');
+const Login = () => {
+    const [email, setUsername] = React.useState('');
+    const [password, setPassword] = React.useState('');
+    const [message, setMessage] = React.useState('');
+    const [showPassword, setShowPassword] = React.useState(false);
 
-        const handleLogin = async (event) => {
-            event.preventDefault();
-            setMessage('');
+    const handleLogin = async (event) => {
+        event.preventDefault();
+        setMessage('');
 
-            const response = await fetch('/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    email,
-                    password
-                })
-            });
+        const response = await fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                email,
+                password
+            })
+        });
 
-            const data = await response.json();
-            if (response.ok) {
-                setMessage("Login successful!");
-                localStorage.setItem('access_token', data.access_token);
-                localStorage.setItem('user_name', data.username);
-                window.location.href = '/';
-            } else {
-                setMessage(data.message || "An error occurred");
-            }
-        };
+        const data = await response.json();
+        if (response.ok) {
+            setMessage("Login successful!");
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('user_name', data.username);
+            window.location.href = '/';
+        } else {
+            setMessage(data.message || "An error occurred");
+        }
+    };
 
-        return (
-            <div className="login-container">
-                <h2>Login</h2>
-                {message && <p className="message">{message}</p>}
-                <form onSubmit={handleLogin} className="login-form">
-                    <label htmlFor="email">Email ID:</label>
+    return (
+        <div className="login-container">
+            <h2>Login</h2>
+            {message && <p className="message">{message}</p>}
+            <form onSubmit={handleLogin} className="login-form">
+                <label htmlFor="email">Email ID:</label>
+                <input
+                    type="text"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="form-input"
+                />
+                <label htmlFor="password">Password:</label>
+                <div className="password-container">
                     <input
-                        type="text"
-                        id="email"
-                        value={email}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                        className="form-input"
-                    />
-                    <label htmlFor="password">Password:</label>
-                    <input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         id="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         className="form-input"
                     />
-                    <div className="button-group">
-                        <button type="submit" className="submit-button">Login</button>
-                        <button
-                            type="button"
-                            className="cancel-button"
-                            onClick={() => window.location.href = '/'}
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-                <p class="admin-link">
-                    <a href="/forgot_password">Forgot Password?</a>
-                </p>
-                <p className="admin-link">
-                    <a href="/admin_login">Are you an admin?</a>
-                </p>
-            </div>
-        );
-    };
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="toggle-password-button"
+                    >
+                        {showPassword ? "Hide Password" : "Show Password"}
+                    </button>
+                </div>
+                <div className="button-group">
+                    <button type="submit" className="submit-button">Login</button>
+                    <button
+                        type="button"
+                        className="cancel-button"
+                        onClick={() => window.location.href = '/'}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </form>
+            <p className="admin-link">
+                <a href="/forgot_password">Forgot Password?</a>
+            </p>
+            <p className="admin-link">
+                <a href="/admin_login">Are you an admin?</a>
+            </p>
+        </div>
+    );
+};
 
-    ReactDOM.render(<Login />, document.getElementById('root'));
+ReactDOM.render(<Login />, document.getElementById('root'));
+
 </script>
+
+</style>
 {% endblock %}

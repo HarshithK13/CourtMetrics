@@ -174,7 +174,11 @@ transform: translateY(-3px);
 .logout-btn:hover {
     background-color: #0056b3; /* Darker blue on hover */
 }
-
+input[type="text"], input[type="email"], input[type="password"] {
+    color: white; /* Set text color to white */
+    background-color: #000044; /* Optional: Set background color */
+    border: 1px solid #ff7b00; /* Optional: Set border color */
+}
 .user-greeting-container {
     display: flex;
     align-items: center;
@@ -342,6 +346,7 @@ transform: translateY(-3px);
     padding: 2rem;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    
     background-color: #ffffff;
     text-align: center;
 }
@@ -349,10 +354,14 @@ transform: translateY(-3px);
 /* Form heading */
 .signup-container h2 {
     font-size: 1.8em;
-    color: #333;
+    color: #ff6600;
     margin-bottom: 1rem;
 }
-
+input[type="text"], input[type="email"], input[type="password"] {
+    color: white; /* Set text color to white */
+    background-color: #000044; /* Optional: Set background color */
+    border: 1px solid #ff7b00; /* Optional: Set border color */
+}
 /* Message styling */
 .message {
     color: #d9534f; /* Red color for error message */
@@ -362,8 +371,9 @@ transform: translateY(-3px);
 /* Label styling */
 .signup-form label {
     font-size: 1rem;
-    color: #555;
+    color: #d9534f;
     display: block;
+
     text-align: left;
     margin-bottom: 0.5rem;
 }
