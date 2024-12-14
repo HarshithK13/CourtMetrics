@@ -25,6 +25,7 @@ scipy==1.14.1
 six==1.17.0
 sklearn==0.0
 threadpoolctl==3.5.0
+traitlets==5.14.3
 tzdata==2024.2
 urllib3==2.2.3
 Werkzeug==3.1.3
