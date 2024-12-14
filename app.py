@@ -368,14 +368,14 @@ def get_final_score(game_id):
 
 
 otp_storage = {}
-def send_otp_email(user_email, otp):
-    sender_email = "testsenderse2024@gmail.com"  
-    sender_password = "sdew udqr hmho reps" 
+def send_otp_email(user_email, otp,user_name):
+    sender_email = "courtmetrics2024@gmail.com"  
+    sender_password = "noyl xqag wbjp olzb" 
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
 
     subject = "OTP to reset your password"
-    body = f"OTP to reset password for your CourtMetrics account is: {otp}"
+    body = f"Hi {user_name}, your OTP to reset password for the CourtMetrics account is: {otp}.This OTP is valid for 5 minutes."
 
     message = MIMEMultipart()
     message['From'] = sender_email
@@ -404,9 +404,9 @@ def send_otp():
     expiration_time = datetime.now() + timedelta(minutes=5)  
 
     otp_storage[user_email] = {"otp": otp, "expires_at": expiration_time}
-
+    user_name = users_collection.find_one({"email": user_email})['username']
     
-    send_otp_email(user_email, otp)
+    send_otp_email(user_email, otp,user_name)
     return jsonify({"message": f"OTP sent to {user_email}"}), 200
 
 
@@ -763,8 +763,9 @@ def signup():
         if len(password) < 12:
             return jsonify({"message": "Password is too short"}), 400
         
-        if "@gmail.com" not in email:
-            return jsonify({"message": "Please use a Gmail account"}), 400
+        
+        if "@gmail.com" not in email and "@umich.edu" not in email:
+            return jsonify({"message": "Please use a Gmail or Umich account"}), 400
 
         # Check if the user already exists
         if users_collection.find_one({"email": email}):
@@ -773,6 +774,9 @@ def signup():
         # Ensure required fields are not empty
         if not all([email, password, mobile, username, address]):
             return jsonify({"message": "Please fill all the fields"}), 400
+        
+        if not mobile.isdigit():
+            return jsonify({"message": "Mobile number must be numeric"}), 400
 
         # Hash the password and save user data
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')

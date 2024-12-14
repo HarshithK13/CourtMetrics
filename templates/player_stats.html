@@ -81,6 +81,7 @@
 <script>
 // Pagination variables
 let currentPage = 1;
+let perPage = parseInt(document.getElementById("entries-select").value);
 
 document.addEventListener("DOMContentLoaded", function () {
     loadStats();
@@ -104,6 +105,12 @@ document.addEventListener("DOMContentLoaded", function () {
             loadStats();
         }
     });
+
+    document.getElementById("entries-select").addEventListener("change", function () {
+        perPage = parseInt(this.value);
+        currentPage = 1;
+        loadStats();
+    });
 });
 
 function updatePaginationControls() {
@@ -117,7 +124,7 @@ function loadStats() {
     const player = document.getElementById("player-select").value;
     const statType = document.getElementById("stat-type-select").value;
 
-    fetch(`/api/player_stats?page=${currentPage}&year=${year}&player=${player}&stat_type=${statType}`)
+    fetch(`/api/player_stats?page=${currentPage}&per_page=${perPage}&year=${year}&player=${player}&stat_type=${statType}`)
         .then(response => response.json())
         .then(data => {
             const statsTableBody = document.getElementById("stats-table-body");
@@ -160,7 +167,7 @@ function loadStats() {
           width: 100%;
           margin: 0;
           padding: 20px;
-          background-color: rgb(0, 0, 68);
+          background-color: rgb(84, 0, 0);
           color: white;
           border-radius: 10px;
           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
