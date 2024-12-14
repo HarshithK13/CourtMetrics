@@ -89,14 +89,51 @@ def place_bid():
     selected_team = request.form.get('selected_team')
     bet_amount = int(request.form.get('bet_amount'))
 
+    month_map = {
+    1: 'January',
+    2: 'February',
+    3: 'March',
+    4: 'April',
+    5: 'May',
+    6: 'June',
+    7: 'July',
+    8: 'August',
+    9: 'September',
+    10: 'October',
+    11: 'November',
+    12: 'December'
+    }
+
+    current_day = datetime.now().day
+    current_month = datetime.now().month
+
+    all_matches = list(matches_collection.find({"Date": {"$regex": f"{month_map[current_month][:3]} {current_day}"}}))
+
+    teams = []
+    for m in all_matches:
+        teams.append([m['Home/Neutral'].split(' ')[-1], m['Visitor/Neutral'].split(' ')[-1]])
+
     # Fetch user data from the database
     user_data = users_collection.find_one({"email": current_user})
     wallet_balance = user_data.get("wallet_balance", 100)
 
+    today_date = datetime.utcnow().date()
+    bid_info = list(payment_history_collection.find({"email":current_user}))
+
+    for bid in bid_info:
+        if bid["transaction_type"] == "bid":
+            bid_date = bid["date"].date()
+            if bid_date == today_date:
+                # print(bid)
+                for t in teams:
+                    if bid['selected_team'] in t and selected_team in t:
+                        return jsonify({'success': False, 'message': 'You have already placed a bid for this match!'}), 400
+                # return jsonify({'success': False, 'message': 'You have already placed a bet for this match!'}), 400
+                
     # Check if the user has already placed a bet for the match
-    existing_bet = next((bid for bid in placed_bids if bid['match_id'] == match_id and bid['user'] == current_user), None)
-    if existing_bet:
-        return jsonify({'success': False, 'message': 'You have already placed a bet for this match!'})
+    # existing_bet = next((bid for bid in placed_bids if bid['match_id'] == match_id and bid['user'] == current_user), None)
+    # if existing_bet:
+    #     return jsonify({'success': False, 'message': 'You have already placed a bet for this match!'})
 
     if bet_amount > wallet_balance:
         return jsonify({'success': False, 'message': 'Insufficient funds!'})
@@ -109,14 +146,16 @@ def place_bid():
     )
 
     # Store this bid in memory (or database) to be resolved later when the match ends
-    placed_bids.append({
-        'match_id': match_id,
-        'selected_team': selected_team,
-        'bet_amount': bet_amount,
-        'status': 'pending',
-        'user': current_user  # Store the user for later reference
-    })
-
+    # placed_bids.append({
+    #     'match_id': match_id,
+    #     'selected_team': selected_team,
+    #     'bet_amount': bet_amount,
+    #     'status': 'pending',
+    #     'user': current_user  # Store the user for later reference
+    # })
+    for a in teams:
+        if selected_team in a:
+            match_id = f"{a[0]}_vs_{a[1]}"
     # Record the transaction in payment history
     payment_record = {
         "email": current_user,
@@ -155,7 +194,7 @@ def add_funds_dummy():
         return jsonify({'success': False, 'message': 'Maximum wallet balance of $5000 reached.'}), 400
 
     # Simulate adding funds
-    new_balance = user_data.get("wallet_balance", 1000) + amount_to_add
+    new_balance = user_data.get("wallet_balance", 100) + amount_to_add
     users_collection.update_one({"email": current_user}, {"$set": {"wallet_balance": new_balance}})
 
     # Record the dummy transaction in the payment history
@@ -182,7 +221,7 @@ def get_user_bids():
     current_user = get_jwt_identity()
     user_bids = [bid for bid in placed_bids if bid['user'] == current_user]
     user_data = users_collection.find_one({"email": current_user})
-    wallet_balance = user_data.get("wallet_balance", 1000)
+    wallet_balance = user_data.get("wallet_balance", 100)
     return jsonify({'user_bids': user_bids, 'wallet_balance': wallet_balance})
 
 
@@ -253,7 +292,7 @@ def available_bids():
     if current_user:
         user_data = users_collection.find_one({"email": current_user})
         if user_data:
-            wallet_balance = user_data.get("wallet_balance", 1000)
+            wallet_balance = user_data.get("wallet_balance", 100)
 
     current_time = datetime.now().time()
     if current_time >= time(1, 0):
@@ -271,6 +310,7 @@ def available_bids():
             print('==========================================')
             print(home_team)
             print(away_team)
+            print(f"{home_team}_vs_{away_team}")
             home_score = game['homeTeam']['score']
             away_score = game['awayTeam']['score']
 
@@ -283,7 +323,7 @@ def available_bids():
                 'away_team': away_team,
                 'home_score': home_score,
                 'away_score': away_score,
-                'betting_amount': max(115 - (home_score + away_score), 0),
+                'betting_amount': max(120 - (home_score + away_score), 0),
                 'predicted_winner': predicted_winner,
                 'prob_home': prob_home,
                 'prob_visitor': prob_visitor
@@ -462,54 +502,54 @@ def reset_password():
     return jsonify({"message": "Password reset successful"}), 200
 
 
-@app.route('/check_results')
-def check_results():
-    global wallet_balance
-    games = scoreboard.ScoreBoard().get_dict()
+# @app.route('/check_results')
+# def check_results():
+#     global wallet_balance
+#     games = scoreboard.ScoreBoard().get_dict()
 
-    results_messages = []
+#     results_messages = []
     
-    for game in games['scoreboard']['games']:
-        if game['gameStatusText'] == "Final":
-            home_team_name = game['homeTeam']['teamName']
-            away_team_name = game['awayTeam']['teamName']
-            home_score = game['homeTeam']['score']
-            away_score = game['awayTeam']['score']
+#     for game in games['scoreboard']['games']:
+#         if game['gameStatusText'] == "Final":
+#             home_team_name = game['homeTeam']['teamName']
+#             away_team_name = game['awayTeam']['teamName']
+#             home_score = game['homeTeam']['score']
+#             away_score = game['awayTeam']['score']
 
-            # Check if there are any pending bids for this match
-            for bid in placed_bids:
-                if bid['match_id'] == f"{home_team_name}_vs_{away_team_name}" and bid['status'] == "pending":
-                    if bid['selected_team'] == "home":
-                        if home_score > away_score:  # Home team wins
-                            wallet_balance += bid['bet_amount'] * 2  # Double reward
-                            results_messages.append(f"Your team {home_team_name} won! You earned ${bid['bet_amount'] * 2}.")
-                            # Add this line after updating wallet_balance in check_results function
-                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
-                        elif home_score == away_score:  # Draw
-                            wallet_balance += bid['bet_amount']  # Refund original bet amount
-                            results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
-                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
-                        else:
+#             # Check if there are any pending bids for this match
+#             for bid in placed_bids:
+#                 if bid['match_id'] == f"{home_team_name}_vs_{away_team_name}" and bid['status'] == "pending":
+#                     if bid['selected_team'] == "home":
+#                         if home_score > away_score:  # Home team wins
+#                             wallet_balance += bid['bet_amount'] * 2  # Double reward
+#                             results_messages.append(f"Your team {home_team_name} won! You earned ${bid['bet_amount'] * 2}.")
+#                             # Add this line after updating wallet_balance in check_results function
+#                             users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+#                         elif home_score == away_score:  # Draw
+#                             wallet_balance += bid['bet_amount']  # Refund original bet amount
+#                             results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
+#                             users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+#                         else:
 
-                            results_messages.append(f"Your team {home_team_name} lost.")
-                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
-                    elif bid['selected_team'] == "away":
-                        if away_score > home_score:  # Away team wins
-                            wallet_balance += bid['bet_amount'] * 2  # Double reward
-                            results_messages.append(f"Your team {away_team_name} won! You earned ${bid['bet_amount'] * 2}.")
-                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
-                        elif away_score == home_score:  # Draw
-                            wallet_balance += bid['bet_amount']  # Refund original bet amount
-                            results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
-                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
-                        else:
-                            results_messages.append(f"Your team {away_team_name} lost.")
-                            users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+#                             results_messages.append(f"Your team {home_team_name} lost.")
+#                             users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+#                     elif bid['selected_team'] == "away":
+#                         if away_score > home_score:  # Away team wins
+#                             wallet_balance += bid['bet_amount'] * 2  # Double reward
+#                             results_messages.append(f"Your team {away_team_name} won! You earned ${bid['bet_amount'] * 2}.")
+#                             users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+#                         elif away_score == home_score:  # Draw
+#                             wallet_balance += bid['bet_amount']  # Refund original bet amount
+#                             results_messages.append(f"The match between {home_team_name} and {away_team_name} was a draw. Your bet has been refunded.")
+#                             users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
+#                         else:
+#                             results_messages.append(f"Your team {away_team_name} lost.")
+#                             users_collection.update_one( {'email': current_user}, {'$set': {'wallet_balance': wallet_balance}})
 
-                    # Mark this bid as resolved
-                    bid['status'] = "resolved"
+#                     # Mark this bid as resolved
+#                     bid['status'] = "resolved"
     
-    return jsonify({'success': True, 'results_messages': results_messages, 'wallet_balance': wallet_balance})
+#     return jsonify({'success': True, 'results_messages': results_messages, 'wallet_balance': wallet_balance})
 
 
 
@@ -546,7 +586,7 @@ def get_wallet_balance():
     # Fetch user's wallet balance from MongoDB
     user_data = users_collection.find_one({"email": current_user})
     if user_data:
-        return jsonify({'wallet_balance': user_data.get("wallet_balance", 1000)})  # Default balance of 1000
+        return jsonify({'wallet_balance': user_data.get("wallet_balance", 100)})  # Default balance of 100
     else:
         return jsonify({'message': 'User not found'}), 404
 
@@ -623,13 +663,19 @@ def admin_home():
     # Format betting data
     formatted_bets = []
     for bet in bets:
+        today_date = datetime.utcnow().date()
+        bid_date = bet['date'].date()
+        if bid_date == today_date:
+            bet_status = 'Running'
+        else:
+            bet_status = 'Resolved'
         formatted_bet = {
             'id': str(bet['_id']),
             'email': bet.get('email', 'Unknown'),
             'match_id': bet.get('match_id', 'Unknown Match'),
             'selected_team': bet.get('selected_team', 'Unknown'),
             'amount': abs(bet.get('amount', 0)),
-            'status': 'Running',
+            'status': bet_status,
             'admin_pl': -bet.get('amount', 0)
         }
         formatted_bets.append(formatted_bet)
@@ -702,23 +748,52 @@ def delete_bet(bet_id):
 def betting_history():
     # Get all betting transactions
     bets = list(payment_history_collection.find({"transaction_type": "bid"}))
-    
+    rewards = list(payment_history_collection.find({"transaction_type": "Bid Reward"}))
     # Calculate financial metrics
     total_bets = len(bets)
     total_bet_amount = sum(abs(bet.get('amount', 0)) for bet in bets)
-    net_profit = sum(-bet.get('amount', 0) for bet in bets)
+    total_reward = 0
+    for a in rewards:
+        temp = int(a['amount'].split('+')[1])
+        total_reward += temp
+    # net_profit = sum(-bet.get('amount', 0) for bet in bets)
+    net_profit = total_bet_amount - total_reward
     
     # Format betting data
     formatted_bets = []
     for bet in bets:
+        today_date = datetime.utcnow().date()
+        bid_date = bet['date'].date()
+        if bid_date == today_date:
+            bet_status = 'Running'
+            admin_pl = abs(bet['amount'])
+        else:
+            bet_status = 'Resolved'
+            bid_date = bet['date'].date()
+            for r in rewards:
+                print(r)
+                try:
+                    temp_amount = abs(bet['amount'])
+                    reward = int(r['amount'].split('+')[1])
+                    if r['date'].date() > bid_date and r['email'] == bet['email'] and r['selected_team'] == bet['selected_team'] and r['match_id'] == bet['match_id'] and reward == 2*temp_amount:
+                        admin_pl = -reward
+                        break
+                    else:
+                        admin_pl = abs(bet['amount'])
+                except:
+                    admin_pl = 'Unknown'
+                    
+                    
+                    
         formatted_bet = {
             'id': str(bet['_id']),
             'email': bet.get('email', 'Unknown'),
             'match_id': bet.get('match_id', 'Unknown Match'),
             'selected_team': bet.get('selected_team', 'Unknown'),
             'amount': abs(bet.get('amount', 0)),
-            'status': 'Running',
-            'admin_pl': -bet.get('amount', 0)
+            'status': bet_status,
+            # 'admin_pl': -bet.get('amount', 0)
+            'admin_pl': admin_pl
         }
         formatted_bets.append(formatted_bet)
 
@@ -808,6 +883,7 @@ def get_upcoming_matches():
         matches = response.json()
 
         today = datetime.today().date()
+        print(today)
         upcoming_matches = [
             match for match in matches 
             if 'Date' in match and datetime.strptime(match['Date'], '%a, %b %d, %Y').date() >= today
@@ -893,7 +969,7 @@ def add_funds():
         return jsonify({'success': False, 'message': 'User not found'}), 404
     
     # Update the user's wallet balance
-    new_balance = user_data.get("wallet_balance", 1000) + amount_to_add
+    new_balance = user_data.get("wallet_balance", 100) + amount_to_add
     users_collection.update_one({"email": current_user}, {"$set": {"wallet_balance": new_balance}})
     
     # Record the transaction in the payment history
