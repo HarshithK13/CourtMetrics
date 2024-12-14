@@ -442,7 +442,7 @@ input[type="text"], input[type="email"], input[type="password"] {
 }
 
 .betting-box {
-    background: linear-gradient(135deg, red, red);
+    background: linear-gradient(135deg, red, rgb(255, 116, 116));
     padding: 30px; /* Increased padding to match .match-box */
     color: white;
     width: 350px; /* Match the width of .match-box */
