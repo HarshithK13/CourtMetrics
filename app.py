@@ -953,36 +953,100 @@ def api_payment_history():
  
     
 
+import paypalrestsdk
+from flask import Flask, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime
+# from your_flask_app import app, users_collection, payment_history_collection
+
+# Set up PayPal SDK (ensure your credentials are correct)
+paypalrestsdk.configure({
+    "mode": "sandbox",  # Use "sandbox" for testing and "live" for production
+    "client_id": "your-client-id",
+    "client_secret": "your-client-secret"
+})
+
 @app.route('/add_funds', methods=['POST'])
 @jwt_required()
 def add_funds():
     current_user = get_jwt_identity()
-    amount_to_add = request.form.get('amount')
+    amount_to_add = request.json.get('amount')
     
-    if not amount_to_add or not amount_to_add.isdigit():
+    # Validate the amount
+    if not amount_to_add or not str(amount_to_add).isdigit():
         return jsonify({'success': False, 'message': 'Invalid amount'}), 400
     
     amount_to_add = int(amount_to_add)
+    
+    # Fetch user data from the database
     user_data = users_collection.find_one({"email": current_user})
     
     if not user_data:
         return jsonify({'success': False, 'message': 'User not found'}), 404
     
-    # Update the user's wallet balance
-    new_balance = user_data.get("wallet_balance", 100) + amount_to_add
-    users_collection.update_one({"email": current_user}, {"$set": {"wallet_balance": new_balance}})
+    # Create a PayPal payment request
+    payment = paypalrestsdk.Payment({
+        "intent": "sale",
+        "payer": {
+            "payment_method": "paypal"
+        },
+        "transactions": [{
+            "amount": {
+                "total": str(amount_to_add),
+                "currency": "USD"
+            },
+            "description": f"Funds added to wallet by {current_user}"
+        }],
+        "redirect_urls": {
+            "return_url": "http://localhost:5000/payment/execute",
+            "cancel_url": "http://localhost:5000/payment/cancel"
+        }
+    })
     
-    # Record the transaction in the payment history
-    payment_record = {
-        "email": current_user,
-        "amount": amount_to_add,
-        "date": datetime.now(),
-        "balance_after_transaction": new_balance,
-        "transaction_type": "add_funds"
-    }
-    payment_history_collection.insert_one(payment_record)
+    # Create the payment
+    if payment.create():
+        approval_url = next(link.href for link in payment.links if link.rel == "approval_url")
+        return jsonify({'success': True, 'approval_url': approval_url}), 200
+    else:
+        return jsonify({'success': False, 'message': 'Error creating PayPal payment'}), 500
+
+@app.route('/payment/execute', methods=['GET'])
+@jwt_required()
+def execute_payment():
+    payment_id = request.args.get('paymentId')
+    payer_id = request.args.get('PayerID')
     
-    return jsonify({'success': True, 'message': f'Funds added successfully! New balance: ${new_balance}', 'wallet_balance': new_balance}), 200
+    payment = paypalrestsdk.Payment.find(payment_id)
+    
+    if payment.execute({"payer_id": payer_id}):
+        current_user = get_jwt_identity()
+        user_data = users_collection.find_one({"email": current_user})
+        
+        new_balance = user_data.get("wallet_balance", 0) + int(payment.transactions[0].amount.total)
+        users_collection.update_one({"email": current_user}, {"$set": {"wallet_balance": new_balance}})
+        
+        # Record the transaction in the payment history
+        payment_record = {
+            "email": current_user,
+            "amount": int(payment.transactions[0].amount.total),
+            "date": datetime.now(),
+            "balance_after_transaction": new_balance,
+            "transaction_type": "add_funds"
+        }
+        payment_history_collection.insert_one(payment_record)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Funds added successfully! New balance: ${new_balance}',
+            'wallet_balance': new_balance
+        }), 200
+    else:
+        return jsonify({'success': False, 'message': 'Payment execution failed'}), 500
+
+@app.route('/payment/cancel', methods=['GET'])
+def cancel_payment():
+    return jsonify({'success': False, 'message': 'Payment was canceled by the user'}), 400
+
 
 
 @app.route('/withdraw_funds', methods=['POST'])
