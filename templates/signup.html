@@ -13,7 +13,6 @@
         const [username, setName] = React.useState('');
         const [address, setAddress] = React.useState('');
         const [message, setMessage] = React.useState('');
-        const [showPassword, setShowPassword] = React.useState(false); // New state for password visibility
 
         const handleSignup = async (e) => {
             e.preventDefault();
@@ -55,23 +54,14 @@
                         className="form-input"
                     />
                     <label htmlFor="password">Password:</label>
-                    <div className="password-container">
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            id="password"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            required
-                            className="form-input"
-                        />
-                        <span
-                            className="eye-icon"
-                            onClick={() => setShowPassword(!showPassword)}
-                        >
-                            {showPassword ? "🙈" : "👁️"}
-                        </span>
-                    </div>
-                    
+                    <input
+                        type="password"
+                        id="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        required
+                        className="form-input"
+                    />
                     <label htmlFor="mobile">Mobile:</label>
                     <input
                         type="text"
@@ -110,25 +100,4 @@
 
     ReactDOM.render(<Signup />, document.getElementById('root'));
 </script>
-
-<style>
-    .password-container {
-        position: relative;
-    }
-
-    .form-input {
-        width: 100%;
-        padding-right: 50px; /* Ensure space for the eye icon */
-    }
-
-    .eye-icon {
-        position: absolute;
-        right: 10px;
-        top: 50%;
-        transform: translateY(-100%);
-        cursor: pointer;
-        font-size: 18px; /* Adjust size as needed */
-    }
-</style>
-
 {% endblock %}
