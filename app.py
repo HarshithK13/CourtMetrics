@@ -117,13 +117,22 @@ def place_bid():
     user_data = users_collection.find_one({"email": current_user})
     wallet_balance = user_data.get("wallet_balance", 100)
 
-    today_date = datetime.utcnow().date()
+    today_date = datetime.now().date()
     bid_info = list(payment_history_collection.find({"email":current_user}))
-
+    print('-----------')
+    print(teams)
+    print('-----------')
     for bid in bid_info:
         if bid["transaction_type"] == "bid":
             bid_date = bid["date"].date()
+            # print('=================================')
+            # print(today_date)
+            # print(bid_date)
+            # print('==================================')
             if bid_date == today_date:
+                print('=====*10')
+                print('yes')
+                print('=====*10')
                 # print(bid)
                 for t in teams:
                     if bid['selected_team'] in t and selected_team in t:
